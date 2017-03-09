@@ -12,23 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
-x=sys.modules['containerregistry.client.v1']
-  
-
-from containerregistry.client.v1 import docker_creds_
-setattr(x, 'docker_creds', docker_creds_)
+"""This package exposes credentials for talking to a Docker registry."""
 
 
-from containerregistry.client.v1 import docker_http_
-setattr(x, 'docker_http', docker_http_)
+
+from containerregistry.client import docker_creds
 
 
-from containerregistry.client.v1 import docker_image_
-setattr(x, 'docker_image', docker_image_)
+class Bearer(docker_creds.SchemeProvider):
+  """Implementation for providing a transaction's Bearer token as creds."""
 
+  def __init__(self, bearer_token):
+    super(Bearer, self).__init__('Bearer')
+    self._bearer_token = bearer_token
 
-from containerregistry.client.v1 import docker_session_
-setattr(x, 'docker_session', docker_session_)
-
-
+  @property
+  def suffix(self):
+    return self._bearer_token

@@ -29,8 +29,9 @@ import tarfile
 import tempfile
 import threading
 
-from containerregistry.client import docker_creds
+from containerregistry.client import docker_creds  # pylint: disable=unused-import
 from containerregistry.client import docker_name
+from containerregistry.client.v1 import docker_creds as v1_creds
 from containerregistry.client.v1 import docker_http
 
 import httplib2  # pylint: disable=unused-import
@@ -124,17 +125,19 @@ gzip.time = _FakeTime()
 
 
 class FromTarball(DockerImage):
-  """This decodes the image tarball output of docker_build for upload.
+  """This decodes the image tarball output of docker_build for upload."""
 
-  The format is similar to 'docker save', however, we also leverage
-  useful 'top' file to avoid searching for the graph entrypoint.
-  """
-
-  def __init__(self, tarball, compresslevel=9):
+  def __init__(
+      self,
+      tarball,
+      name=None,
+      compresslevel=9
+  ):
     self._tarball = tarball
     self._compresslevel = compresslevel
     self._memoize = {}
     self._lock = threading.Lock()
+    self._name = name
 
   def _content(self, name, memoize=True):
     """Fetches a particular path's contents from the tarball."""
@@ -158,7 +161,25 @@ class FromTarball(DockerImage):
 
   def top(self):
     """Override."""
-    return self._content('top').strip()
+    repositories = self.repositories()
+    if self._name:
+      key = '{registry}/{repository}'.format(
+          registry=self._name.registry,
+          repository=self._name.repository)
+      return repositories[key][self._name.tag]
+
+    if len(repositories) != 1:
+      raise ValueError('Tarball must contain a single repository, '
+                       'or a name must be specified to FromTarball.')
+
+    for (unused_repo, tags) in repositories.iteritems():
+      if len(tags) != 1:
+        raise ValueError('Tarball must contain a single tag, '
+                         'or a name must be specified to FromTarball.')
+      for (unused_tag, layer_id) in tags.iteritems():
+        return layer_id
+
+    raise Exception('Unreachable code in FromTarball.top()')
 
   def repositories(self):
     """Override."""
@@ -208,7 +229,7 @@ class FromRegistry(DockerImage):
     self._creds = basic_creds
     self._transport = transport
     # Set up in __enter__
-    self._tags = None
+    self._tags = {}
     self._response = {}
 
   def top(self):
@@ -272,7 +293,7 @@ class FromRegistry(DockerImage):
     # The response should have an X-Docker-Token header, which
     # we should extract and annotate subsequent requests with:
     #   Authorization: Token {extracted value}
-    self._creds = docker_creds.Token(resp['x-docker-token'])
+    self._creds = v1_creds.Token(resp['x-docker-token'])
 
     self._endpoint = resp['x-docker-endpoints']
     # TODO(user): Consider also supporting cookies, which are

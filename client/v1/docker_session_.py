@@ -23,8 +23,9 @@
 import httplib
 import logging
 
-from containerregistry.client import docker_creds
+from containerregistry.client import docker_creds  # pylint: disable=unused-import
 from containerregistry.client import docker_name  # pylint: disable=unused-import
+from containerregistry.client.v1 import docker_creds as v1_creds
 from containerregistry.client.v1 import docker_http
 from containerregistry.client.v1 import docker_image  # pylint: disable=unused-import
 
@@ -75,7 +76,7 @@ class Push(object):
     # The response should have an X-Docker-Token header, which
     # we should extract and annotate subsequent requests with:
     #   Authorization: Token {extracted value}
-    self._token_creds = docker_creds.Token(resp['x-docker-token'])
+    self._token_creds = v1_creds.Token(resp['x-docker-token'])
 
     self._endpoint = resp['x-docker-endpoints']
     # TODO(user): Consider also supporting cookies, which are

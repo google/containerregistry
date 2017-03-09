@@ -41,7 +41,7 @@ class Anonymous(Provider):
     return ''
 
 
-class _SchemeProvider(Provider):
+class SchemeProvider(Provider):
   """Implementation for providing a challenge response credential."""
 
   def __init__(self, scheme):
@@ -57,33 +57,7 @@ class _SchemeProvider(Provider):
     return '%s %s' % (self._scheme, self.suffix)
 
 
-# TODO(user): Move to v1
-class Token(_SchemeProvider):
-  """Implementation for providing a transaction's X-Docker-Token as creds."""
-
-  def __init__(self, token):
-    super(Token, self).__init__('Token')
-    self._token = token
-
-  @property
-  def suffix(self):
-    return self._token
-
-
-# TODO(user): Move to v2
-class Bearer(_SchemeProvider):
-  """Implementation for providing a transaction's Bearer token as creds."""
-
-  def __init__(self, bearer_token):
-    super(Bearer, self).__init__('Bearer')
-    self._bearer_token = bearer_token
-
-  @property
-  def suffix(self):
-    return self._bearer_token
-
-
-class Basic(_SchemeProvider):
+class Basic(SchemeProvider):
   """Implementation for providing a username/password-based creds."""
 
   def __init__(self, username, password):

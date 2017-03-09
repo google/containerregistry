@@ -16,6 +16,10 @@ import sys
 x=sys.modules['containerregistry.client.v2_2']
   
 
+from containerregistry.client.v2_2 import docker_creds_
+setattr(x, 'docker_creds', docker_creds_)
+
+
 from containerregistry.client.v2_2 import docker_http_
 setattr(x, 'docker_http', docker_http_)
 

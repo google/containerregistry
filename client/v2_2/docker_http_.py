@@ -22,8 +22,9 @@ import re
 import threading
 import urllib
 
-from containerregistry.client import docker_creds
+from containerregistry.client import docker_creds  # pylint: disable=unused-import
 from containerregistry.client import docker_name
+from containerregistry.client.v2_2 import docker_creds as v2_2_creds
 import httplib2  # pylint: disable=unused-import
 
 # Options for docker_http.Transport actions
@@ -259,7 +260,7 @@ class Transport(object):
 
     with self._lock:
       # We have successfully reauthenticated.
-      self._bearer_creds = docker_creds.Bearer(wrapper_object['token'])
+      self._bearer_creds = v2_2_creds.Bearer(wrapper_object['token'])
 
   # pylint: disable=invalid-name
   def Request(
