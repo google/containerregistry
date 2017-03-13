@@ -113,6 +113,11 @@ def DetachSignatures(
   return (unsigned_manifest, signatures)
 
 
+def Sign(unsigned_manifest):
+  # TODO(user): Implement v2 signing in Python.
+  return unsigned_manifest
+
+
 
 
 def _AttachSignatures(
