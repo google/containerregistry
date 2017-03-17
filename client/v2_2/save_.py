@@ -17,6 +17,7 @@
 
 
 import cStringIO
+import gzip
 import hashlib
 import json
 import tarfile
@@ -29,6 +30,12 @@ from containerregistry.client.v2_2 import v2_compat
 
 
 
+def _diff_id(blob):
+  compressed_file = cStringIO.StringIO(blob)
+  decompressed_file = gzip.GzipFile(fileobj=compressed_file, mode='rb')
+  return 'sha256:' + hashlib.sha256(decompressed_file.read()).hexdigest()
+
+
 def tarball(
     name,
     image,
@@ -37,7 +44,7 @@ def tarball(
   """Produce a "docker save" compatible tarball from the DockerImage.
 
   Args:
-    name: The tag name to write into the repositories file.
+    name: The tag name to write into repositories and manifest.json
     image: a docker image to save.
     tar: the open tarfile into which we are writing the image tarball.
   """
@@ -50,6 +57,11 @@ def tarball(
   # The config file is stored in a blob file named with its digest.
   digest = hashlib.sha256(image.config_file()).hexdigest()
   add_file('./' + digest + '.json', image.config_file())
+
+  # We don't just exclude the empty tar because we leave its diff_id
+  # in the set when coming through v2_compat.V22FromV2
+  cfg = json.loads(image.config_file())
+  diffs = set(cfg.get('rootfs', {}).get('diff_ids', []))
 
   with v2_compat.V2FromV22(image) as v2_img:
     with v1_compat.V1FromV2(v2_img) as v1_img:
@@ -67,10 +79,11 @@ def tarball(
       #  - RepoTags: the list of tags to apply to this image once it
       #             is loaded.
       add_file('./manifest.json', json.dumps([{
-          'Config': './' + digest + '.json',
+          'Config': digest + '.json',
           'Layers': [
-              './' + layer_id + '/layer.tar'
+              layer_id + '/layer.tar'
               for layer_id in reversed(v1_img.ancestry(v1_img.top()))
+              if _diff_id(v1_img.layer(layer_id)) in diffs
           ],
           'RepoTags': [str(name)]
-      }]))
+      }], sort_keys=True))

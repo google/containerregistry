@@ -18,10 +18,13 @@
 
 import abc
 import cStringIO
+import gzip
+import hashlib
 import httplib
 import json
 import os
 import tarfile
+import threading
 
 from containerregistry.client import docker_creds  # pylint: disable=unused-import
 from containerregistry.client import docker_name
@@ -220,6 +223,159 @@ class FromRegistry(DockerImage):
     self._transport = docker_http.Transport(
         self._name, self._creds, self._original_transport, docker_http.PULL)
 
+    return self
+
+  def __exit__(self, unused_type, unused_value, unused_traceback):
+    pass
+
+
+# Gzip injects a timestamp into its output, which makes its output and digest
+# non-deterministic.  To get reproducible pushes, freeze time.
+# This approach is based on the following StackOverflow answer:
+# http://stackoverflow.com/
+#    questions/264224/setting-the-gzip-timestamp-from-python
+class _FakeTime(object):
+
+  def time(self):
+    return 1225856967.109
+
+gzip.time = _FakeTime()
+
+
+class FromTarball(DockerImage):
+  """This decodes the image tarball output of docker_build for upload."""
+
+  def __init__(
+      self,
+      tarball,
+      name=None,
+      compresslevel=9
+  ):
+    self._tarball = tarball
+    self._compresslevel = compresslevel
+    self._memoize = {}
+    self._lock = threading.Lock()
+    self._name = name
+
+  def _content(self, name, memoize=True):
+    """Fetches a particular path's contents from the tarball."""
+    # Check our cache
+    if memoize:
+      with self._lock:
+        if name in self._memoize:
+          return self._memoize[name]
+
+    # tarfile is inherently single-threaded:
+    # https://mail.python.org/pipermail/python-bugs-list/2015-March/265999.html
+    # so instead of locking, just open the tarfile for each file
+    # we want to read.
+    with tarfile.open(name=self._tarball, mode='r') as tar:
+      # TODO(user): If it doesn't exist with ./ then try other forms.
+      content = tar.extractfile('./' + name).read()
+      # Populate our cache.
+      if memoize:
+        with self._lock:
+          self._memoize[name] = content
+      return content
+
+  def _gzipped_content(self, name):
+    """Returns the result of _content with gzip applied."""
+    buf = cStringIO.StringIO()
+    f = gzip.GzipFile(mode='wb', compresslevel=self._compresslevel, fileobj=buf)
+    try:
+      # If we are applying gzip, probability is high this could be large,
+      # so do not memoize.
+      f.write(self._content(name, memoize=False))
+    finally:
+      f.close()
+    return buf.getvalue()
+
+  def manifest(self):
+    """Override."""
+    return json.dumps(self._manifest, sort_keys=True)
+
+  def config_file(self):
+    """Override."""
+    return self._content(self._config_file)
+
+  def blob(self, digest):
+    """Override."""
+    # Could be large, do not memoize
+    return self._gzipped_content(self._blob_names[digest])
+
+  def _resolve_tag(self):
+    """Resolve the singleton tag this tarball contains using legacy methods."""
+    repositories = json.loads(self._content('repositories', memoize=False))
+    if len(repositories) != 1:
+      raise ValueError('Tarball must contain a single repository, '
+                       'or a name must be specified to FromTarball.')
+
+    for (repo, tags) in repositories.iteritems():
+      if len(tags) != 1:
+        raise ValueError('Tarball must contain a single tag, '
+                         'or a name must be specified to FromTarball.')
+      for (tag, unused_layer) in tags.iteritems():
+        return '{repository}:{tag}'.format(repository=repo, tag=tag)
+
+    raise Exception('unreachable')
+
+  # __enter__ and __exit__ allow use as a context manager.
+  def __enter__(self):
+    manifest_json = self._content('manifest.json')
+    manifest_list = json.loads(manifest_json)
+
+    config = None
+    layers = []
+    # Find the right entry, either:
+    # 1) We were supplied with an image name, which we must find in an entry's
+    #   RepoTags, or
+    # 2) We were not supplied with an image name, and this must have a single
+    #   image defined.
+    if len(manifest_list) != 1:
+      if not self._name:
+        # If we run into this situation, fall back on the legacy repositories
+        # file to tell us the single tag.  We do this because Bazel will apply
+        # build targets as labels, so each layer will be labelled, but only
+        # the final label will appear in the resulting repositories file.
+        self._name = self._resolve_tag()
+
+    for entry in manifest_list:
+      if not self._name or str(self._name) in entry.get('RepoTags', []):
+        config = entry.get('Config')
+        layers = entry.get('Layers', [])
+
+    if not config:
+      raise ValueError('Unable to find %s in provided tarball.' % self._name)
+
+    # Construct the v2.2 manifest skeleton
+    self._config_file = config
+    self._manifest = {
+        'mediaType': 'application/vnd.docker.distribution.manifest.v2+json',
+        'schemaVersion': 2,
+        'config': {
+            'digest': 'sha256:' + hashlib.sha256(
+                self.config_file()).hexdigest(),
+            # TODO(user): This should be established by examining the actual
+            # config file
+            'mediaType': 'application/vnd.docker.container.image.v1+json',
+            'size': len(self.config_file())
+        },
+        'layers': [
+            # Populated below
+        ]
+    }
+
+    self._blob_names = {}
+    for layer in layers:
+      content = self._gzipped_content(layer)
+      name = 'sha256:' + hashlib.sha256(content).hexdigest()
+      self._blob_names[name] = layer
+      self._manifest['layers'].append({
+          'digest': name,
+          # TODO(user): Do we need to sniff the file to detect this?
+          'mediaType': 'application/vnd.docker.image.rootfs.diff.tar.gzip',
+          'size': len(content),
+      })
     return self
 
   def __exit__(self, unused_type, unused_value, unused_traceback):
