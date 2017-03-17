@@ -32,3 +32,7 @@ from containerregistry.client.v1 import docker_session_
 setattr(x, 'docker_session', docker_session_)
 
 
+from containerregistry.client.v1 import save_
+setattr(x, 'save', save_)
+
+

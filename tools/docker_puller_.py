@@ -10,10 +10,9 @@ import tarfile
 
 from containerregistry.client import docker_creds
 from containerregistry.client import docker_name
-from containerregistry.client.v1 import docker_image as v1_image
 from containerregistry.client.v2 import docker_image as v2_image
-from containerregistry.client.v2 import v1_compat
 from containerregistry.client.v2_2 import docker_image as v2_2_image
+from containerregistry.client.v2_2 import save
 from containerregistry.client.v2_2 import v2_compat
 from containerregistry.transport import transport_pool
 
@@ -40,14 +39,12 @@ def main():
   with tarfile.open(name=args.tarball, mode='w') as tar:
     with v2_2_image.FromRegistry(name, creds, transport) as v2_2_img:
       if v2_2_img.exists():
-        with v2_compat.V2FromV22(v2_2_img) as v2_img:
-          with v1_compat.V1FromV2(v2_img) as v1_img:
-            v1_image.save(name, v1_img, tar)
-            return
+        save.tarball(name, v2_2_img, tar)
+        return
 
     with v2_image.FromRegistry(name, creds, transport) as v2_img:
-      with v1_compat.V1FromV2(v2_img) as v1_img:
-        v1_image.save(name, v1_img, tar)
+      with v2_compat.V22FromV2(v2_img) as v2_2_img:
+        save.tarball(name, v2_2_img, tar)
         return
 
 
