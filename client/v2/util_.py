@@ -106,9 +106,7 @@ def DetachSignatures(
   # Establish the protected region and extract it from our original string.
   (format_length, format_tail) = _ExtractCommonProtectedRegion(signatures)
   suffix = _JoseBase64UrlDecode(format_tail)
-  # pytype: disable=wrong-arg-types
   unsigned_manifest = manifest[0:format_length] + suffix
-  # pytype: enable=wrong-arg-types
 
   return (unsigned_manifest, signatures)
 
@@ -126,7 +124,7 @@ def _AttachSignatures(
 ):
   """Attach the provided signatures to the provided naked manifest."""
   (format_length, format_tail) = _ExtractCommonProtectedRegion(signatures)
-  prefix = manifest[0:format_length]  # pytype: disable=wrong-arg-types
+  prefix = manifest[0:format_length]
   suffix = _JoseBase64UrlDecode(format_tail)
   return '{prefix},"signatures":{signatures}{suffix}'.format(
       prefix=prefix, signatures=json.dumps(signatures, sort_keys=True),
