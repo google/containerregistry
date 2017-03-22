@@ -1,7 +1,4 @@
-"""This package anonymously pulls images from a Docker Registry.
-
-TODO(user): support authenticated pulls.
-"""
+"""This package pulls images from a Docker Registry."""
 
 
 
@@ -56,13 +53,16 @@ def _make_tag_if_digest(
 def main():
   args = parser.parse_args()
 
-  creds = docker_creds.Anonymous()
   transport = transport_pool.Http(httplib2.Http, size=8)
 
   if '@' in args.name:
     name = docker_name.Digest(args.name)
   else:
     name = docker_name.Tag(args.name)
+
+  # Resolve the appropriate credential to use based on the standard Docker
+  # client logic.
+  creds = docker_creds.DefaultKeychain.Resolve(name)
 
   with tarfile.open(name=args.tarball, mode='w') as tar:
     with v2_2_image.FromRegistry(name, creds, transport) as v2_2_img:

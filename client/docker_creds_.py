@@ -18,7 +18,11 @@
 
 import abc
 import base64
+import json
+import os
+import subprocess
 
+from containerregistry.client import docker_name
 import httplib2  # pylint: disable=unused-import
 from oauth2client import client as oauth2client  # pylint: disable=unused-import
 
@@ -111,3 +115,121 @@ class OAuth2(Basic):
     # Most useful API ever:
     # https://www.googleapis.com/oauth2/v1/tokeninfo?access_token={at}
     return self._creds.get_access_token(http=self._transport).access_token
+
+
+class Helper(Basic):
+  """This provider wraps a particularly named credential helper."""
+
+  def __init__(
+      self,
+      name,
+      registry):
+    """Constructor.
+
+    Args:
+      name: the name of the helper, as it appears in the Docker config.
+      registry: the registry for which we're invoking the helper.
+    """
+    super(Helper, self).__init__('does not matter', 'does not matter')
+    self._name = name
+    self._registry = registry.registry
+
+  @property
+  def suffix(self):
+    # Invokes:
+    #   echo -n {self._registry} | docker-credential-{self._name} get
+    # The resulting JSON blob will have 'Username' and 'Secret' fields.
+
+    p = subprocess.Popen(['docker-credential-{name}'.format(name=self._name),
+                          'get'],
+                         stdout=subprocess.PIPE,
+                         stdin=subprocess.PIPE,
+                         stderr=subprocess.STDOUT)
+    stdout = p.communicate(input=self._registry)[0]
+    if p.returncode != 0:
+      raise Exception('Error fetching credential for %s, exit status: %d\n%s'
+                      % (self._name, p.returncode, stdout))
+
+    blob = json.loads(stdout.decode())
+    return base64.b64encode(blob['Username'] + ':' + blob['Secret'])
+
+
+class Keychain(object):
+  """Interface for resolving an image reference to a credential."""
+
+  __metaclass__ = abc.ABCMeta  # For enforcing that methods are overriden.
+
+  @abc.abstractmethod
+  def Resolve(self, name):
+    """Resolves the appropriate credential for the given registry.
+
+    Args:
+      name: the registry for which we need a credential.
+
+    Returns:
+      a Provider suitable for use with registry operations.
+    """
+
+_SCHEMES = ['', 'https://', 'http://']
+
+
+def _GetUserHomeDir():
+  if os.name == 'nt':
+    # %HOME% has precedence over %USERPROFILE% for os.path.expanduser('~')
+    # The Docker config resides under %USERPROFILE% on Windows
+    return os.path.expandvars('%USERPROFILE%')
+  else:
+    return os.path.expanduser('~')
+
+
+def _GetConfigDirectory():
+  # Return the value of $DOCKER_CONFIG, if it exists, otherwise ~/.docker
+  # see https://github.com/docker/docker/blob/master/cliconfig/config.go
+  if os.environ.get('DOCKER_CONFIG') is not None:
+    return os.environ.get('DOCKER_CONFIG')
+  else:
+    return os.path.join(_GetUserHomeDir(), '.docker')
+
+
+class _DefaultKeychain(Keychain):
+  """This implements the default docker credential resolution."""
+
+  def Resolve(self, name):
+    # TODO(user): Consider supporting .dockercfg, which was used prior
+    # to Docker 1.7 and consisted of just the contents of 'auths' below.
+    config_file = os.path.join(_GetConfigDirectory(), 'config.json')
+    with open(config_file, 'r') as reader:
+      cfg = json.loads(reader.read())
+
+    # Per-registry credential helpers take precedence.
+    cred_store = cfg.get('credHelpers', {})
+    for prefix in _SCHEMES:
+      if prefix + name.registry in cred_store:
+        return Helper(cred_store[prefix + name.registry], name)
+
+    # A global credential helper is next in precedence.
+    if 'credsStore' in cfg:
+      return Helper(cfg['credsStore'], name)
+
+    # Lastly, the 'auths' section directly contains basic auth entries.
+    auths = cfg.get('auths', {})
+    for prefix in _SCHEMES:
+      if prefix + name.registry in auths:
+        entry = auths[prefix + name.registry]
+        if 'auth' in entry:
+          username, password = base64.b64decode(entry['auth']).split(':', 1)
+          return Basic(username, password)
+        elif 'username' in entry and 'password' in entry:
+          return Basic(entry['username'], entry['password'])
+        else:
+          # TODO(user): Support identitytoken
+          # TODO(user): Support registrytoken
+          raise Exception(
+              'Unsupported entry in "auth" section of Docker config: %s'
+              % json.dumps(entry))
+
+    return Anonymous()
+
+
+# pylint: disable=invalid-name
+DefaultKeychain = _DefaultKeychain()

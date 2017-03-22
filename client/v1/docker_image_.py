@@ -152,7 +152,11 @@ class FromTarball(DockerImage):
     # so instead of locking, just open the tarfile for each file
     # we want to read.
     with tarfile.open(name=self._tarball, mode='r') as tar:
-      content = tar.extractfile('./' + name).read()
+      try:
+        content = tar.extractfile(name).read()
+      except KeyError:
+        content = tar.extractfile('./' + name).read()
+
       # Populate our cache.
       if memoize:
         with self._lock:

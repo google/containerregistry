@@ -20,3 +20,7 @@ from containerregistry.tools import docker_puller_
 setattr(x, 'docker_puller', docker_puller_)
 
 
+from containerregistry.tools import docker_pusher_
+setattr(x, 'docker_pusher', docker_pusher_)
+
+
