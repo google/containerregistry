@@ -198,8 +198,12 @@ class _DefaultKeychain(Keychain):
     # TODO(user): Consider supporting .dockercfg, which was used prior
     # to Docker 1.7 and consisted of just the contents of 'auths' below.
     config_file = os.path.join(_GetConfigDirectory(), 'config.json')
-    with open(config_file, 'r') as reader:
-      cfg = json.loads(reader.read())
+    try:
+      with open(config_file, 'r') as reader:
+        cfg = json.loads(reader.read())
+    except IOError:
+      # If the file doesn't exist, fallback on anonymous auth.
+      return Anonymous()
 
     # Per-registry credential helpers take precedence.
     cred_store = cfg.get('credHelpers', {})

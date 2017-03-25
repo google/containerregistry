@@ -16,6 +16,10 @@ import sys
 x=sys.modules['containerregistry.tools']
   
 
+from containerregistry.tools import patched_
+setattr(x, 'patched', patched_)
+
+
 from containerregistry.tools import docker_puller_
 setattr(x, 'docker_puller', docker_puller_)
 
