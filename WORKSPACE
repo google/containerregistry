@@ -64,6 +64,6 @@ py_library(
 # For packaging python tools.
 git_repository(
     name = "subpar",
-    remote = "https://github.com/mattmoor/subpar",
-    commit = "a8a564e5e3bc9f85fed1ea42e888c498dd715cd6",
+    remote = "https://github.com/google/subpar",
+    commit = "7e12cc130eb8f09c8cb02c3585a91a4043753c56",
 )
