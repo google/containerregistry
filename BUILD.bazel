@@ -40,3 +40,13 @@ par_binary(
    visibility = ["//visibility:public"],
    deps = [":containerregistry"]
 )
+
+sh_test(
+    name = "puller_test",
+    size = "large",
+    srcs = ["puller_test.sh"],
+    data = [
+      ":puller.par",
+      "testenv.sh",
+    ],
+)

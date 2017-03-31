@@ -28,6 +28,28 @@ py_library(
 )""",
 )
 
+# Used by oauth2client
+new_http_archive(
+    name = "six",
+    url = "https://pypi.python.org/packages/source/s/six/six-1.9.0.tar.gz",
+    sha256 = "e24052411fc4fbd1f672635537c3fc2330d9481b18c0317695b46259512c91d5",
+    strip_prefix = "six-1.9.0/",
+    type = "tar.gz",
+    build_file_content = """
+# Rename six.py to __init__.py
+genrule(
+    name = "rename",
+    srcs = ["six.py"],
+    outs = ["__init__.py"],
+    cmd = "cat $< >$@",
+)
+py_library(
+   name = "six",
+   srcs = [":__init__.py"],
+   visibility = ["//visibility:public"],
+)"""
+)
+
 # Used for authentication in containerregistry
 new_http_archive(
     name = "oauth2client",
@@ -42,6 +64,7 @@ py_library(
    visibility = ["//visibility:public"],
    deps = [
      "@httplib2//:httplib2",
+     "@six//:six",
    ]
 )"""
 )

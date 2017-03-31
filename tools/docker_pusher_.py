@@ -42,6 +42,9 @@ _THREADS = 8
 def main():
   args = parser.parse_args()
 
+  if not args.name or not args.tarball:
+    raise Exception('--name and --tarball are required arguments.')
+
   transport = transport_pool.Http(httplib2.Http, size=_THREADS)
 
   # This library can support push-by-digest, but the likelihood of a user

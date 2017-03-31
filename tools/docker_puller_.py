@@ -67,6 +67,9 @@ def _make_tag_if_digest(
 def main():
   args = parser.parse_args()
 
+  if not args.name or not args.tarball:
+    raise Exception('--name and --tarball are required arguments.')
+
   transport = transport_pool.Http(httplib2.Http, size=8)
 
   if '@' in args.name:
