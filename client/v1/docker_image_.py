@@ -42,14 +42,18 @@ class DockerImage(object):
 
   __metaclass__ = abc.ABCMeta  # For enforcing that methods are overriden.
 
+  # pytype: disable=bad-return-type
   @abc.abstractmethod
   def top(self):
     """The layer id of the topmost layer."""
+  # pytype: enable=bad-return-type
 
+  # pytype: disable=bad-return-type
   @abc.abstractmethod
   def repositories(self):
     """The json blob of tags, loaded as a dict."""
     pass
+  # pytype: enable=bad-return-type
 
   def parent(self, layer_id):
     """The layer of id of the parent of the provided layer, or None.
@@ -65,6 +69,7 @@ class DockerImage(object):
       return None
     return metadata['parent']
 
+  # pytype: disable=bad-return-type
   @abc.abstractmethod
   def json(self, layer_id):
     """The JSON metadata of the provided layer.
@@ -76,7 +81,9 @@ class DockerImage(object):
       The raw json string of the layer.
     """
     pass
+  # pytype: enable=bad-return-type
 
+  # pytype: disable=bad-return-type
   @abc.abstractmethod
   def layer(self, layer_id):
     """The layer.tar.gz blob of the provided layer id.
@@ -88,7 +95,9 @@ class DockerImage(object):
       The raw blob string of the layer.
     """
     pass
+  # pytype: enable=bad-return-type
 
+  # pytype: disable=bad-return-type
   @abc.abstractmethod
   def ancestry(self, layer_id):
     """The ancestry of the given layer, base layer first.
@@ -100,6 +109,7 @@ class DockerImage(object):
       The list of ancestor IDs, base first, layer_id last.
     """
     pass
+  # pytype: enable=bad-return-type
 
   # __enter__ and __exit__ allow use as a context manager.
   @abc.abstractmethod

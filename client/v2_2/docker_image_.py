@@ -29,7 +29,12 @@ import threading
 from containerregistry.client import docker_creds  # pylint: disable=unused-import
 from containerregistry.client import docker_name
 from containerregistry.client.v2_2 import docker_http
+from containerregistry.client.v2_2 import util
 import httplib2  # pylint: disable=unused-import
+
+
+class DigestMismatchedError(Exception):
+  """Exception raised when a digest mismatch is encountered."""
 
 
 class DockerImage(object):
@@ -50,6 +55,7 @@ class DockerImage(object):
     """The unique set of blobs that compose to create the filesystem."""
     return set(self.fs_layers() + [self.config_blob()])
 
+  # pytype: disable=bad-return-type
   @abc.abstractmethod
   def manifest(self):
     """The JSON manifest referenced by the tag/digest.
@@ -57,15 +63,19 @@ class DockerImage(object):
     Returns:
       The raw json manifest
     """
+  # pytype: enable=bad-return-type
 
+  # pytype: disable=bad-return-type
   @abc.abstractmethod
   def config_file(self):
     """The raw blob string of the config file."""
+  # pytype: enable=bad-return-type
 
   def blob_size(self, digest):
     """The byte size of the raw blob."""
     return len(self.blob(digest))
 
+  # pytype: disable=bad-return-type
   @abc.abstractmethod
   def blob(self, digest):
     """The raw blob of the layer.
@@ -76,6 +86,7 @@ class DockerImage(object):
     Returns:
       The raw blob string of the layer.
     """
+  # pytype: enable=bad-return-type
 
   # __enter__ and __exit__ allow use as a context manager.
   @abc.abstractmethod
@@ -152,9 +163,10 @@ class FromRegistry(DockerImage):
     try:
       manifest = json.loads(self.manifest())
       return manifest['schemaVersion'] == 2
-    except docker_http.V2DiagnosticException:
-      # TODO(user): Check for 404
-      return False
+    except docker_http.V2DiagnosticException as err:
+      if err.http_status_code == 404:
+        return False
+      raise
 
   def manifest(self):
     """Override."""
@@ -165,7 +177,13 @@ class FromRegistry(DockerImage):
       return self._content('manifests/' + self._name.tag, accepted_mimes)
     else:
       assert isinstance(self._name, docker_name.Digest)
-      return self._content('manifests/' + self._name.digest, accepted_mimes)
+      c = self._content('manifests/' + self._name.digest, accepted_mimes)
+      computed = util.Digest(c)
+      if computed != self._name.digest:
+        raise DigestMismatchedError(
+            'The returned manifest\'s digest did not match requested digest, '
+            '%s vs. %s' % (self._name.digest, computed))
+      return c
 
   def config_file(self):
     """Override."""
@@ -193,7 +211,13 @@ class FromRegistry(DockerImage):
   def blob(self, digest):
     """Override."""
     # GET server1/v2/<name>/blobs/<digest>
-    return self._content('blobs/' + digest, cache=False)
+    c = self._content('blobs/' + digest, cache=False)
+    computed = 'sha256:' + hashlib.sha256(c).hexdigest()
+    if digest != computed:
+      raise DigestMismatchedError(
+          'The returned content\'s digest did not match its content-address, '
+          '%s vs. %s' % (digest, computed))
+    return c
 
   def catalog(self, page_size=100):
     # TODO(user): Handle docker_name.Repository for /v2/<name>/_catalog

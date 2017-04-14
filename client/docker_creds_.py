@@ -32,9 +32,11 @@ class Provider(object):
 
   __metaclass__ = abc.ABCMeta  # For enforcing that methods are overriden.
 
+  # pytype: disable=bad-return-type
   @abc.abstractmethod
   def Get(self):
     """Produces a value suitable for use in the Authorization header."""
+  # pytype: enable=bad-return-type
 
 
 class Anonymous(Provider):
@@ -51,10 +53,12 @@ class SchemeProvider(Provider):
   def __init__(self, scheme):
     self._scheme = scheme
 
+  # pytype: disable=bad-return-type
   @property
   @abc.abstractmethod
   def suffix(self):
     """Returns the authentication payload to follow the auth scheme."""
+  # pytype: enable=bad-return-type
 
   def Get(self):
     """Gets the credential in a form suitable for an Authorization header."""
@@ -159,6 +163,7 @@ class Keychain(object):
 
   __metaclass__ = abc.ABCMeta  # For enforcing that methods are overriden.
 
+  # pytype: disable=bad-return-type
   @abc.abstractmethod
   def Resolve(self, name):
     """Resolves the appropriate credential for the given registry.
@@ -169,6 +174,7 @@ class Keychain(object):
     Returns:
       a Provider suitable for use with registry operations.
     """
+  # pytype: enable=bad-return-type
 
 _SCHEMES = ['', 'https://', 'http://']
 

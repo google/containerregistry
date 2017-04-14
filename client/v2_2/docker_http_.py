@@ -113,6 +113,10 @@ class V2DiagnosticException(Exception):
 
   @property
   def http_status_code(self):
+    if self._resp.status:
+      # Check to see if the raw http response was given.
+      return self._resp.status
+    # Return the 'status' contained in an actual dict.
     return int(self._resp.get('status'))
 
 

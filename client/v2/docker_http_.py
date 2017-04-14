@@ -96,6 +96,18 @@ class V2DiagnosticException(Exception):
   def diagnostics(self):
     return self._diagnostics
 
+  @property
+  def response(self):
+    return self._resp
+
+  @property
+  def http_status_code(self):
+    if self._resp.status:
+      # Check to see if the raw http response was given.
+      return self._resp.status
+    # Return the 'status' contained in an actual dict.
+    return int(self._resp.get('status'))
+
 
 class BadStateException(Exception):
   """Exceptions when we have entered an unexpected state."""
