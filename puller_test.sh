@@ -16,15 +16,23 @@
 
 # Unit tests for puller.par
 
-# Test it in our current environment.
-puller.par --name=gcr.io/google-containers/pause:2.0 --tarball=/tmp/foo.tar
-
 # Trick to chase the symlink before the docker build.
 cp puller.par puller2.par
 
+# Test pulling an image by just invoking the puller
+function test_puller() {
+  local image=$1
+
+  # Test it in our current environment.
+  puller.par --name="${image}" --tarball=/tmp/foo.tar
+}
+
+# Test pulling an image from inside a docker container with a
+# certain base / entrypoint
 function test_base() {
-  local entrypoint=$1
-  local base_image=$2
+  local image=$1
+  local entrypoint=$2
+  local base_image=$3
 
   echo Testing puller env: ${base_image} entrypoint: ${entrypoint}
   # TODO(user): use a temp dir
@@ -36,10 +44,35 @@ EOF
   docker build -t puller_test .
 
   docker run -i --rm --entrypoint="${entrypoint}" puller_test \
-    /puller.par --name=gcr.io/google-containers/pause:2.0 --tarball=/tmp/foo.tar
+    /puller.par --name="${image}" --tarball=/tmp/foo.tar
 
   docker rmi puller_test
 }
 
-test_base python2.7 python:2.7
-test_base python2.7 gcr.io/cloud-builders/bazel
+function test_image() {
+  local image=$1
+
+  echo "TESTING: ${image}"
+
+  test_puller "${image}"
+
+  test_base "${image}" python2.7 python:2.7
+  test_base "${image}" python2.7 gcr.io/cloud-builders/bazel
+}
+
+# Test pulling a trivial image.
+test_image gcr.io/google-containers/pause:2.0
+
+# Test pulling a non-trivial image.
+test_image gcr.io/google-appengine/python:latest
+
+# Test pulling from DockerHub
+test_image index.docker.io/library/busybox:latest
+
+# Test pulling from Quay.io
+test_image quay.io/coreos/etcd:latest
+
+# Test pulling by digest
+test_image gcr.io/google-containers/pause@sha256:9ce5316f9752b8347484ab0f6778573af15524124d52b93230b9a0dcc987e73e
+
+# TODO(user): Add an authenticated pull test.
