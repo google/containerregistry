@@ -161,14 +161,14 @@ class FromRegistry(DockerImage):
 
   def exists(self):
     try:
-      manifest = json.loads(self.manifest())
+      manifest = json.loads(self.manifest(validate=False))
       return manifest['schemaVersion'] == 2
     except docker_http.V2DiagnosticException as err:
       if err.http_status_code == 404:
         return False
       raise
 
-  def manifest(self):
+  def manifest(self, validate=True):
     """Override."""
     # GET server1/v2/<name>/manifests/<tag_or_digest>
     accepted_mimes = docker_http.MANIFEST_SCHEMA2_MIMES
@@ -179,7 +179,7 @@ class FromRegistry(DockerImage):
       assert isinstance(self._name, docker_name.Digest)
       c = self._content('manifests/' + self._name.digest, accepted_mimes)
       computed = util.Digest(c)
-      if computed != self._name.digest:
+      if validate and computed != self._name.digest:
         raise DigestMismatchedError(
             'The returned manifest\'s digest did not match requested digest, '
             '%s vs. %s' % (self._name.digest, computed))
