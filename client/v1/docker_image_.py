@@ -337,21 +337,26 @@ class Random(DockerImage):
   image.
   """
 
+  # TODO(b/36589467): Add function arg for creating blob.
   def __init__(self,
                sample,
                num_layers=5,
-               layer_byte_size=64):
+               layer_byte_size=64,
+               blobs=None):
     # Generate the image.
     self._ancestry = []
     self._layers = {}
 
-    for _ in range(0, num_layers):
+    num_layers = len(blobs) if blobs else num_layers
+    for i in xrange(num_layers):
       # Avoid repetitions.
       while True:
         layer_id = self._next_id(sample)
         if layer_id not in self._ancestry:
           self._ancestry += [layer_id]
-          self._layers[layer_id] = self._next_layer(sample, layer_byte_size)
+          blob = blobs[i] if blobs else None
+          self._layers[layer_id] = self._next_layer(
+              sample, layer_byte_size, blob)
           break
 
   def top(self):
@@ -395,14 +400,19 @@ class Random(DockerImage):
   def _next_layer(
       self,
       sample,
-      layer_byte_size
+      layer_byte_size,
+      blob
   ):
     buf = cStringIO.StringIO()
 
     # TODO(user): Consider doing something more creative...
     with tarfile.open(fileobj=buf, mode='w:gz') as tar:
+      if blob:
+        info = tarfile.TarInfo(name='./' + self._next_id(sample))
+        info.size = len(blob)
+        tar.addfile(info, fileobj=cStringIO.StringIO(blob))
       # Linux optimization, use dd for data file creation.
-      if sys.platform.startswith('linux') and layer_byte_size >= 1024 * 1024:
+      elif sys.platform.startswith('linux') and layer_byte_size >= 1024 * 1024:
         mb = layer_byte_size / (1024 * 1024)
         tempdir = tempfile.mkdtemp()
         data_filename = os.path.join(tempdir, 'a.bin')
