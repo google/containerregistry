@@ -16,9 +16,9 @@
 
 
 
-from containerregistry.client import docker_creds  # pylint: disable=unused-import
+from containerregistry.client import docker_creds
 from containerregistry.client import docker_name
-import httplib2  # pylint: disable=unused-import
+import httplib2
 
 
 class BadStatusException(Exception):

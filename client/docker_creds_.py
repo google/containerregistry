@@ -23,8 +23,8 @@ import os
 import subprocess
 
 from containerregistry.client import docker_name
-import httplib2  # pylint: disable=unused-import
-from oauth2client import client as oauth2client  # pylint: disable=unused-import
+import httplib2
+from oauth2client import client as oauth2client
 
 
 class Provider(object):

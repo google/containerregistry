@@ -22,12 +22,12 @@ import urllib
 import urlparse
 import concurrent.futures
 
-from containerregistry.client import docker_creds  # pylint: disable=unused-import
+from containerregistry.client import docker_creds
 from containerregistry.client import docker_name
 from containerregistry.client.v2_2 import docker_http
-from containerregistry.client.v2_2 import docker_image  # pylint: disable=unused-import
+from containerregistry.client.v2_2 import docker_image
 from containerregistry.client.v2_2 import util
-import httplib2  # pylint: disable=unused-import
+import httplib2
 
 
 def _tag_or_digest(

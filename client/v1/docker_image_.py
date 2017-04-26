@@ -29,12 +29,12 @@ import tarfile
 import tempfile
 import threading
 
-from containerregistry.client import docker_creds  # pylint: disable=unused-import
+from containerregistry.client import docker_creds
 from containerregistry.client import docker_name
 from containerregistry.client.v1 import docker_creds as v1_creds
 from containerregistry.client.v1 import docker_http
 
-import httplib2  # pylint: disable=unused-import
+import httplib2
 
 
 class DockerImage(object):
@@ -134,22 +134,29 @@ class _FakeTime(object):
 gzip.time = _FakeTime()
 
 
-class FromTarball(DockerImage):
-  """This decodes the image tarball output of docker_build for upload."""
+class FromShardedTarball(DockerImage):
+  """This decodes the sharded image tarballs from docker_build."""
 
   def __init__(
       self,
-      tarball,
+      layer_to_tarball,
+      top,
       name=None,
       compresslevel=9
   ):
-    self._tarball = tarball
+    self._layer_to_tarball = layer_to_tarball
+    self._top = top
     self._compresslevel = compresslevel
     self._memoize = {}
     self._lock = threading.Lock()
     self._name = name
 
-  def _content(self, name, memoize=True):
+  def _content(
+      self,
+      layer_id,
+      name,
+      memoize=True
+  ):
     """Fetches a particular path's contents from the tarball."""
     # Check our cache
     if memoize:
@@ -161,7 +168,7 @@ class FromTarball(DockerImage):
     # https://mail.python.org/pipermail/python-bugs-list/2015-March/265999.html
     # so instead of locking, just open the tarfile for each file
     # we want to read.
-    with tarfile.open(name=self._tarball, mode='r') as tar:
+    with tarfile.open(name=self._layer_to_tarball(layer_id), mode='r') as tar:
       try:
         content = tar.extractfile(name).read()
       except KeyError:
@@ -175,33 +182,15 @@ class FromTarball(DockerImage):
 
   def top(self):
     """Override."""
-    repositories = self.repositories()
-    if self._name:
-      key = '{registry}/{repository}'.format(
-          registry=self._name.registry,
-          repository=self._name.repository)
-      return repositories[key][self._name.tag]
-
-    if len(repositories) != 1:
-      raise ValueError('Tarball must contain a single repository, '
-                       'or a name must be specified to FromTarball.')
-
-    for (unused_repo, tags) in repositories.iteritems():
-      if len(tags) != 1:
-        raise ValueError('Tarball must contain a single tag, '
-                         'or a name must be specified to FromTarball.')
-      for (unused_tag, layer_id) in tags.iteritems():
-        return layer_id
-
-    raise Exception('Unreachable code in FromTarball.top()')
+    return self._top
 
   def repositories(self):
     """Override."""
-    return json.loads(self._content('repositories'))
+    return json.loads(self._content(self.top(), 'repositories'))
 
   def json(self, layer_id):
     """Override."""
-    return self._content(layer_id + '/json')
+    return self._content(layer_id, layer_id + '/json')
 
   # Large, do not memoize.
   def layer(self, layer_id):
@@ -209,7 +198,7 @@ class FromTarball(DockerImage):
     buf = cStringIO.StringIO()
     f = gzip.GzipFile(mode='wb', compresslevel=self._compresslevel, fileobj=buf)
     try:
-      f.write(self._content(layer_id + '/layer.tar', memoize=False))
+      f.write(self._content(layer_id, layer_id + '/layer.tar', memoize=False))
     finally:
       f.close()
 
@@ -224,12 +213,52 @@ class FromTarball(DockerImage):
 
   # __enter__ and __exit__ allow use as a context manager.
   def __enter__(self):
-    # Check that the file exists.
-    with tarfile.open(name=self._tarball, mode='r'):
-      return self
+    return self
 
   def __exit__(self, unused_type, unused_value, unused_traceback):
     pass
+
+
+def _get_top(tarball, name=None):
+  """Get the topmost layer in the image tarball."""
+  with tarfile.open(name=tarball, mode='r') as tar:
+    try:
+      repositories = json.loads(tar.extractfile('repositories').read())
+    except KeyError:
+      repositories = json.loads(tar.extractfile('./repositories').read())
+
+  if name:
+    key = '{registry}/{repository}'.format(
+        registry=name.registry,
+        repository=name.repository)
+    return repositories[key][name.tag]
+
+  if len(repositories) != 1:
+    raise ValueError('Tarball must contain a single repository, '
+                     'or a name must be specified to FromTarball.')
+
+  for (unused_repo, tags) in repositories.iteritems():
+    if len(tags) != 1:
+      raise ValueError('Tarball must contain a single tag, '
+                       'or a name must be specified to FromTarball.')
+    for (unused_tag, layer_id) in tags.iteritems():
+      return layer_id
+
+  raise Exception('Unreachable code in _get_top()')
+
+
+class FromTarball(FromShardedTarball):
+  """This decodes the image tarball output of docker_build for upload."""
+
+  def __init__(
+      self,
+      tarball,
+      name=None,
+      compresslevel=9
+  ):
+    super(FromTarball, self).__init__(
+        lambda unused_id: tarball, _get_top(tarball, name),
+        name=name, compresslevel=compresslevel)
 
 
 class FromRegistry(DockerImage):
@@ -367,7 +396,8 @@ class Random(DockerImage):
     """Override."""
     return {
         'random/image': {
-            'latest': self.top(),
+            # TODO(user): Remove this suppression.
+            'latest': self.top(),  # type: ignore
         }
     }
 

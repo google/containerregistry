@@ -84,18 +84,16 @@ class V22FromV2(v2_2_image.DockerImage):
       histories += [history]
 
     v1_compatibility = json.loads(
-        manifest_schema1.get('history', [''])[0].get('v1Compatibility', {}))
+        manifest_schema1.get('history', [''])[0].get('v1Compatibility', '{}'))
 
     config = {
-        'architecture': v1_compatibility.get('architecture', ''),
-        'config': v1_compatibility.get('config', {}),
-        'container': v1_compatibility.get('container', ''),
-        'container_config': v1_compatibility.get('container_config', {}),
-        'docker_version': v1_compatibility.get('docker_version', ''),
         'history': histories,
-        'os': v1_compatibility.get('os', ''),
         'rootfs': rootfs
     }
+    for key in ['architecture', 'config', 'container', 'container_config',
+                'docker_version', 'os']:
+      if key in v1_compatibility:
+        config[key] = v1_compatibility[key]
 
     if 'created' in v1_compatibility:
       config['created'] = v1_compatibility.get('created')
@@ -196,10 +194,11 @@ class V2FromV22(v2_image.DockerImage):
         'schemaVersion': 1,
         'name': 'unused',
         'tag': 'unused',
-        'architecture': config.get('architecture', ''),
         'fsLayers': fs_layers,
         'history': v1_histories
     }
+    if 'architecture' in config:
+      manifest_schema1['architecture'] = config['architecture']
     self._manifest = v2_util.Sign(json.dumps(manifest_schema1, sort_keys=True))
 
   def _GenerateV1LayerId(
@@ -225,23 +224,22 @@ class V2FromV22(v2_image.DockerImage):
       parent,
       history
   ):
-    v1_compatibility = {
-        'id': layer_id,
-        'parent': parent,
-        'container_config': {
-            'Cmd': [history['created_by']]
-        } if 'created_by' in history else {},
-        'throwaway': True if 'empty_layer' in history else False
-    }
+    v1_compatibility = {'id': layer_id}
 
-    if 'created' in history:
-      v1_compatibility['created'] = history.get('created')
+    if parent:
+      v1_compatibility['parent'] = parent
 
-    if 'comment' in history:
-      v1_compatibility['comment'] = history.get('comment')
+    if 'empty_layer' in history:
+      v1_compatibility['throwaway'] = True
 
-    if 'author' in history:
-      v1_compatibility['author'] = history.get('author')
+    if 'created_by' in history:
+      v1_compatibility['container_config'] = {
+          'Cmd': [history['created_by']]
+      }
+
+    for key in ['created', 'comment', 'author']:
+      if key in history:
+        v1_compatibility[key] = history[key]
 
     return json.dumps(v1_compatibility, sort_keys=True)
 
@@ -252,20 +250,18 @@ class V2FromV22(v2_image.DockerImage):
       history,
       config
   ):
-    v1_compatibility = {
-        'architecture': config.get('architecture', ''),
-        'container': config.get('container', ''),
-        'docker_version': config.get('docker_version', ''),
-        'os': config.get('os', ''),
-        'config': config.get('config', {}),
-        'container_config': config.get('container_config', {}),
-        'id': layer_id,
-        'parent': parent,
-        'throwaway': True if 'empty_layer' in history else False
-    }
+    v1_compatibility = {'id': layer_id}
 
-    if 'created' in config:
-      v1_compatibility['created'] = config.get('created')
+    if parent:
+      v1_compatibility['parent'] = parent
+
+    if 'empty_layer' in history:
+      v1_compatibility['throwaway'] = True
+
+    for key in ['architecture', 'container', 'docker_version', 'os', 'config',
+                'container_config', 'created']:
+      if key in config:
+        v1_compatibility[key] = config[key]
 
     return json.dumps(v1_compatibility, sort_keys=True)
 

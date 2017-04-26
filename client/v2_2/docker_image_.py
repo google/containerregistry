@@ -26,11 +26,11 @@ import os
 import tarfile
 import threading
 
-from containerregistry.client import docker_creds  # pylint: disable=unused-import
+from containerregistry.client import docker_creds
 from containerregistry.client import docker_name
 from containerregistry.client.v2_2 import docker_http
 from containerregistry.client.v2_2 import util
-import httplib2  # pylint: disable=unused-import
+import httplib2
 
 
 class DigestMismatchedError(Exception):
@@ -273,13 +273,16 @@ class FromTarball(DockerImage):
       self,
       tarball,
       name=None,
-      compresslevel=9
+      compresslevel=9,
+      allow_shards=False
   ):
     self._tarball = tarball
     self._compresslevel = compresslevel
     self._memoize = {}
     self._lock = threading.Lock()
     self._name = name
+    self._allow_shards = allow_shards
+    self._is_shard = False
 
   def _content(self, name, memoize=True):
     """Fetches a particular path's contents from the tarball."""
@@ -319,6 +322,8 @@ class FromTarball(DockerImage):
 
   def manifest(self):
     """Override."""
+    if self._is_shard:
+      raise Exception('Cannot access manifest in partial tarballs')
     return json.dumps(self._manifest, sort_keys=True)
 
   def config_file(self):
@@ -394,15 +399,24 @@ class FromTarball(DockerImage):
 
     self._blob_names = {}
     for layer in layers:
-      content = self._gzipped_content(layer)
-      name = 'sha256:' + hashlib.sha256(content).hexdigest()
-      self._blob_names[name] = layer
-      self._manifest['layers'].append({
-          'digest': name,
-          # TODO(user): Do we need to sniff the file to detect this?
-          'mediaType': 'application/vnd.docker.image.rootfs.diff.tar.gzip',
-          'size': len(content),
-      })
+      try:
+        content = self._gzipped_content(layer)
+        name = 'sha256:' + hashlib.sha256(content).hexdigest()
+        self._blob_names[name] = layer
+        self._manifest['layers'].append({
+            'digest': name,
+            # TODO(user): Do we need to sniff the file to detect this?
+            'mediaType': 'application/vnd.docker.image.rootfs.diff.tar.gzip',
+            'size': len(content),
+        })
+      except KeyError:
+        if not self._allow_shards:
+          raise
+        self._is_shard = True
+
+    if self._is_shard:
+      self._manifest = None
+
     return self
 
   def __exit__(self, unused_type, unused_value, unused_traceback):

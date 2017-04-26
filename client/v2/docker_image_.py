@@ -24,11 +24,11 @@ import json
 import os
 import tarfile
 
-from containerregistry.client import docker_creds  # pylint: disable=unused-import
+from containerregistry.client import docker_creds
 from containerregistry.client import docker_name
 from containerregistry.client.v2 import docker_http
 from containerregistry.client.v2 import util
-import httplib2  # pylint: disable=unused-import
+import httplib2
 
 
 class DigestMismatchedError(Exception):

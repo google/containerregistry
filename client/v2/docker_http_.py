@@ -22,10 +22,10 @@ import re
 import threading
 import urllib
 
-from containerregistry.client import docker_creds  # pylint: disable=unused-import
-from containerregistry.client import docker_name  # pylint: disable=unused-import
+from containerregistry.client import docker_creds
+from containerregistry.client import docker_name
 from containerregistry.client.v2 import docker_creds as v2_creds
-import httplib2  # pylint: disable=unused-import
+import httplib2
 
 # Options for docker_http.Transport actions
 PULL = 'pull'

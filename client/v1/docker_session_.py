@@ -23,13 +23,13 @@
 import httplib
 import logging
 
-from containerregistry.client import docker_creds  # pylint: disable=unused-import
-from containerregistry.client import docker_name  # pylint: disable=unused-import
+from containerregistry.client import docker_creds
+from containerregistry.client import docker_name
 from containerregistry.client.v1 import docker_creds as v1_creds
 from containerregistry.client.v1 import docker_http
-from containerregistry.client.v1 import docker_image  # pylint: disable=unused-import
+from containerregistry.client.v1 import docker_image
 
-import httplib2  # pylint: disable=unused-import
+import httplib2
 
 
 class Push(object):

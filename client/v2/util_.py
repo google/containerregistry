@@ -22,7 +22,7 @@ import json
 import os
 import subprocess
 
-from containerregistry.client import docker_name  # pylint: disable=unused-import
+from containerregistry.client import docker_name
 
 
 class BadManifestException(Exception):

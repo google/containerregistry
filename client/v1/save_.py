@@ -26,6 +26,59 @@ from containerregistry.client.v1 import docker_image
 
 
 
+def multi_image_tarball(
+    tag_to_image,
+    tar
+):
+  """Produce a "docker save" compatible tarball from the DockerImages.
+
+  Args:
+    tag_to_image: A dictionary of tags to the images they label.
+    tar: the open tarfile into which we are writing the image tarball.
+  """
+  def add_file(filename, contents):
+    info = tarfile.TarInfo(filename)
+    info.size = len(contents)
+    tar.addfile(tarinfo=info, fileobj=cStringIO.StringIO(contents))
+
+  seen = set()
+  repositories = {}
+  # Each layer is encoded as a directory in the larger tarball of the form:
+  #  {layer_id}\
+  #    layer.tar
+  #    VERSION
+  #    json
+  for (tag, image) in tag_to_image.iteritems():
+    # Add this image's repositories entry.
+    repo = '{registry}/{repository}'.format(
+        registry=tag.registry,
+        repository=tag.repository)
+    tags = repositories.get(repo, {})
+    tags[tag.tag] = image.top()
+    repositories[repo] = tags
+
+    for layer_id in image.ancestry(image.top()):
+      # Add each layer_id exactly once.
+      if layer_id in seen:
+        continue
+      seen.add(layer_id)
+
+      # VERSION generally seems to contain 1.0, not entirely sure
+      # what the point of this is.
+      add_file(layer_id + '/VERSION', '1.0')
+
+      # Add the unzipped layer tarball
+      buf = cStringIO.StringIO(image.layer(layer_id))
+      f = gzip.GzipFile(mode='rb', fileobj=buf)
+      add_file(layer_id + '/layer.tar', f.read())
+
+      # Now the json metadata
+      add_file(layer_id + '/json', image.json(layer_id))
+
+  # Add the metadata tagging the top layer.
+  add_file('repositories', json.dumps(repositories, sort_keys=True))
+
+
 def tarball(
     name,
     image,
@@ -38,39 +91,12 @@ def tarball(
     image: a docker image to save.
     tar: the open tarfile into which we are writing the image tarball.
   """
-
   def add_file(filename, contents):
     info = tarfile.TarInfo(filename)
     info.size = len(contents)
     tar.addfile(tarinfo=info, fileobj=cStringIO.StringIO(contents))
 
-  for layer_id in image.ancestry(image.top()):
-    # Each layer is encoded as a directory in the larger tarball of the form:
-    #  {layer_id}\
-    #    layer.tar
-    #    VERSION
-    #    json
-
-    # VERSION generally seems to contain 1.0, not entirely sure
-    # what the point of this is.
-    add_file('./' + layer_id + '/VERSION', '1.0')
-
-    # Add the unzipped layer tarball
-    buf = cStringIO.StringIO(image.layer(layer_id))
-    f = gzip.GzipFile(mode='rb', fileobj=buf)
-    add_file('./' + layer_id + '/layer.tar', f.read())
-
-    # Now the json metadata
-    add_file('./' + layer_id + '/json', image.json(layer_id))
-
-  # Add the metadata tagging the top layer.
-  add_file('./repositories', json.dumps({
-      '{registry}/{repository}'.format(
-          registry=name.registry,
-          repository=name.repository): {
-              name.tag: image.top()
-          }
-      }))
+  multi_image_tarball({name: image}, tar)
 
   # Add our convenience file with the top layer's ID.
-  add_file('./top', image.top())
+  add_file('top', image.top())
