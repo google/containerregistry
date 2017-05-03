@@ -17,7 +17,6 @@
 
 
 import cStringIO
-import gzip
 import json
 import tarfile
 
@@ -68,9 +67,8 @@ def multi_image_tarball(
       add_file(layer_id + '/VERSION', '1.0')
 
       # Add the unzipped layer tarball
-      buf = cStringIO.StringIO(image.layer(layer_id))
-      f = gzip.GzipFile(mode='rb', fileobj=buf)
-      add_file(layer_id + '/layer.tar', f.read())
+      content = image.uncompressed_layer(layer_id)
+      add_file(layer_id + '/layer.tar', content)
 
       # Now the json metadata
       add_file(layer_id + '/json', image.json(layer_id))

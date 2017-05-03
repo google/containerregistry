@@ -92,6 +92,12 @@ class V1FromV2(v1_image.DockerImage):
     return self._v1_json.get(layer_id, '{}')
 
   # Large, don't memoize
+  def uncompressed_layer(self, layer_id):
+    """Override."""
+    v2_digest = self._v1_to_v2.get(layer_id)
+    return self._v2_image.uncompressed_blob(v2_digest)
+
+  # Large, don't memoize
   def layer(self, layer_id):
     """Override."""
     v2_digest = self._v1_to_v2.get(layer_id)
@@ -151,6 +157,10 @@ class V2FromV1(v2_image.DockerImage):
   def manifest(self):
     """Override."""
     return self._manifest
+
+  def uncompressed_blob(self, digest):
+    """Override."""
+    return self._v1_image.uncompressed_layer(self._layer_map[digest])
 
   def blob(self, digest):
     """Override."""

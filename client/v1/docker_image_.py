@@ -97,6 +97,14 @@ class DockerImage(object):
     pass
   # pytype: enable=bad-return-type
 
+  def uncompressed_layer(self, layer_id):
+    """Same as layer() but uncompressed."""
+    zipped = self.layer(layer_id)
+    buf = cStringIO.StringIO(zipped)
+    f = gzip.GzipFile(mode='rb', fileobj=buf)
+    unzipped = f.read()
+    return unzipped
+
   # pytype: disable=bad-return-type
   @abc.abstractmethod
   def ancestry(self, layer_id):
@@ -193,16 +201,23 @@ class FromShardedTarball(DockerImage):
     return self._content(layer_id, layer_id + '/json')
 
   # Large, do not memoize.
+  def uncompressed_layer(self, layer_id):
+    """Override."""
+    return self._content(layer_id, layer_id + '/layer.tar', memoize=False)
+
+  # Large, do not memoize.
   def layer(self, layer_id):
     """Override."""
+    unzipped = self.uncompressed_layer(layer_id)
     buf = cStringIO.StringIO()
     f = gzip.GzipFile(mode='wb', compresslevel=self._compresslevel, fileobj=buf)
     try:
-      f.write(self._content(layer_id, layer_id + '/layer.tar', memoize=False))
+      f.write(unzipped)
     finally:
       f.close()
 
-    return buf.getvalue()
+    zipped = buf.getvalue()
+    return zipped
 
   def ancestry(self, layer_id):
     """Override."""

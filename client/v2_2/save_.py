@@ -17,7 +17,6 @@
 
 
 import cStringIO
-import gzip
 import hashlib
 import json
 import tarfile
@@ -31,10 +30,9 @@ from containerregistry.client.v2_2 import v2_compat
 
 
 
-def _diff_id(blob):
-  compressed_file = cStringIO.StringIO(blob)
-  decompressed_file = gzip.GzipFile(fileobj=compressed_file, mode='rb')
-  return 'sha256:' + hashlib.sha256(decompressed_file.read()).hexdigest()
+def _diff_id(v1_img, blob):
+  unzipped = v1_img.uncompressed_layer(blob)
+  return 'sha256:' + hashlib.sha256(unzipped).hexdigest()
 
 
 def multi_image_tarball(
@@ -91,7 +89,7 @@ def multi_image_tarball(
             # We don't just exclude the empty tar because we leave its diff_id
             # in the set when coming through v2_compat.V22FromV2
             for layer_id in reversed(v1_img.ancestry(v1_img.top()))
-            if _diff_id(v1_img.layer(layer_id)) in diffs
+            if _diff_id(v1_img, layer_id) in diffs
         ],
         'RepoTags': [str(tag)]
     })

@@ -88,6 +88,14 @@ class DockerImage(object):
     """
   # pytype: enable=bad-return-type
 
+  def uncompressed_blob(self, digest):
+    """Same as blob() but uncompressed."""
+    zipped = self.blob(digest)
+    buf = cStringIO.StringIO(zipped)
+    f = gzip.GzipFile(mode='rb', fileobj=buf)
+    unzipped = f.read()
+    return unzipped
+
   # __enter__ and __exit__ allow use as a context manager.
   @abc.abstractmethod
   def __enter__(self):
@@ -164,7 +172,7 @@ class FromRegistry(DockerImage):
       manifest = json.loads(self.manifest(validate=False))
       return manifest['schemaVersion'] == 2
     except docker_http.V2DiagnosticException as err:
-      if err.http_status_code == 404:
+      if err.http_status_code == httplib.NOT_FOUND:
         return False
       raise
 
@@ -274,15 +282,14 @@ class FromTarball(DockerImage):
       tarball,
       name=None,
       compresslevel=9,
-      allow_shards=False
   ):
     self._tarball = tarball
     self._compresslevel = compresslevel
     self._memoize = {}
     self._lock = threading.Lock()
     self._name = name
-    self._allow_shards = allow_shards
-    self._is_shard = False
+    self._manifest = None
+    self._blob_names = None
 
   def _content(self, name, memoize=True):
     """Fetches a particular path's contents from the tarball."""
@@ -310,29 +317,72 @@ class FromTarball(DockerImage):
 
   def _gzipped_content(self, name):
     """Returns the result of _content with gzip applied."""
+    unzipped = self._content(name, memoize=False)
     buf = cStringIO.StringIO()
     f = gzip.GzipFile(mode='wb', compresslevel=self._compresslevel, fileobj=buf)
     try:
       # If we are applying gzip, probability is high this could be large,
       # so do not memoize.
-      f.write(self._content(name, memoize=False))
+      f.write(unzipped)
     finally:
       f.close()
-    return buf.getvalue()
+    zipped = buf.getvalue()
+    return zipped
+
+  def _populate_manifest_and_blobs(self):
+    """Populates self._manifest and self._blob_names."""
+    manifest = {
+        'mediaType': docker_http.MANIFEST_SCHEMA2_MIME,
+        'schemaVersion': 2,
+        'config': {
+            'digest': 'sha256:' + hashlib.sha256(
+                self.config_file()).hexdigest(),
+            'mediaType': docker_http.CONFIG_JSON_MIME,
+            'size': len(self.config_file())
+        },
+        'layers': [
+            # Populated below
+        ]
+    }
+
+    blob_names = {}
+    for layer in self._layers:
+      content = self._gzipped_content(layer)
+      name = 'sha256:' + hashlib.sha256(content).hexdigest()
+      blob_names[name] = layer
+      manifest['layers'].append({
+          'digest': name,
+          # TODO(user): Do we need to sniff the file to detect this?
+          'mediaType': docker_http.LAYER_MIME,
+          'size': len(content),
+      })
+
+    with self._lock:
+      self._manifest = manifest
+      self._blob_names = blob_names
 
   def manifest(self):
     """Override."""
-    if self._is_shard:
-      raise Exception('Cannot access manifest in partial tarballs')
+    if not self._manifest:
+      self._populate_manifest_and_blobs()
     return json.dumps(self._manifest, sort_keys=True)
 
   def config_file(self):
     """Override."""
     return self._content(self._config_file)
 
+  # Could be large, do not memoize
+  def uncompressed_blob(self, digest):
+    """Override."""
+    if not self._blob_names:
+      self._populate_manifest_and_blobs()
+    return self._content(self._blob_names[digest], memoize=False)
+
+  # Could be large, do not memoize
   def blob(self, digest):
     """Override."""
-    # Could be large, do not memoize
+    if not self._blob_names:
+      self._populate_manifest_and_blobs()
     return self._gzipped_content(self._blob_names[digest])
 
   def _resolve_tag(self):
@@ -379,43 +429,14 @@ class FromTarball(DockerImage):
     if not config:
       raise ValueError('Unable to find %s in provided tarball.' % self._name)
 
-    # Construct the v2.2 manifest skeleton
+    # Metadata from the tarball's configuration we need to construct the image.
     self._config_file = config
-    self._manifest = {
-        'mediaType': 'application/vnd.docker.distribution.manifest.v2+json',
-        'schemaVersion': 2,
-        'config': {
-            'digest': 'sha256:' + hashlib.sha256(
-                self.config_file()).hexdigest(),
-            # TODO(user): This should be established by examining the actual
-            # config file
-            'mediaType': 'application/vnd.docker.container.image.v1+json',
-            'size': len(self.config_file())
-        },
-        'layers': [
-            # Populated below
-        ]
-    }
+    self._layers = layers
 
-    self._blob_names = {}
-    for layer in layers:
-      try:
-        content = self._gzipped_content(layer)
-        name = 'sha256:' + hashlib.sha256(content).hexdigest()
-        self._blob_names[name] = layer
-        self._manifest['layers'].append({
-            'digest': name,
-            # TODO(user): Do we need to sniff the file to detect this?
-            'mediaType': 'application/vnd.docker.image.rootfs.diff.tar.gzip',
-            'size': len(content),
-        })
-      except KeyError:
-        if not self._allow_shards:
-          raise
-        self._is_shard = True
-
-    if self._is_shard:
-      self._manifest = None
+    # We populate "manifest" and "blobs" lazily for two reasons:
+    # 1) Allow use of this library for reading the config_file() from the image
+    #   layer shards Bazel produces.
+    # 2) Performance of the case where all we read is the config_file().
 
     return self
 

@@ -16,8 +16,6 @@
 
 
 
-import cStringIO
-import gzip
 import hashlib
 import json
 
@@ -34,6 +32,57 @@ class BadDigestException(Exception):
 
 EMPTY_TAR_DIGEST = (
     'sha256:a3ed95caeb02ffe68cdd9fd84406680ae93d633cb16422d00e8a7c22955b46d4')
+
+
+# Expose a way of constructing the config file given just the v1 compat list
+# and a list of diff ids.  This is used for compatibility with v2 images (below)
+# but is also useful for scenarios where we are handling 'docker save' tarballs
+# since those don't know their v2/v2.2 blob names and gzipping to compute them
+# is wasteful because we don't actually need them if we are just going to
+# re-save the image.  While we don't provide it here, this can be used to
+# synthesize a v2.2 config_file directly from a v1.docker_image.DockerImage.
+def config_file(
+    v1_compats,
+    diff_ids
+):
+  """Compute the v2.2 config file given the history and diff ids."""
+  # We want the first (last reversed) v1 compatibility field, from which
+  # we will draw additional fields.
+  v1_compatibility = {}
+  histories = []
+  for v1_compat in v1_compats:
+    v1_compatibility = v1_compat
+
+    # created_by in history is the cmd which was run to create the layer.
+    # Cmd in container config may be empty array.
+    history = {}
+    if 'container_config' in v1_compatibility:
+      container_config = v1_compatibility.get('container_config')
+      if container_config.get('Cmd'):
+        history['created_by'] = container_config['Cmd'][0]
+
+    if 'created' in v1_compatibility:
+      history['created'] = v1_compatibility.get('created')
+
+    histories += [history]
+
+  config = {
+      'history': histories,
+      'rootfs': {
+          'diff_ids': diff_ids,
+          'type': 'layers'
+      }
+  }
+
+  for key in ['architecture', 'config', 'container', 'container_config',
+              'docker_version', 'os']:
+    if key in v1_compatibility:
+      config[key] = v1_compatibility[key]
+
+  if 'created' in v1_compatibility:
+    config['created'] = v1_compatibility.get('created')
+
+  return json.dumps(config, sort_keys=True)
 
 
 class V22FromV2(v2_2_image.DockerImage):
@@ -56,49 +105,15 @@ class V22FromV2(v2_2_image.DockerImage):
     raw_manifest_schema1 = self._v2_image.manifest()
     manifest_schema1 = json.loads(raw_manifest_schema1)
 
-    histories = []
-    diff_ids = []
-    layers = []
-    for digest in reversed(self._v2_image.fs_layers()):
-      diff_id, size = self._GetDiffIdAndSize(digest)
-      layers += [{'mediaType': docker_http.LAYER_MIME,
-                  'size': size,
-                  'digest': digest}]
-      diff_ids += [diff_id]
+    # Compute the config_file for the v2.2 image.
+    self._config_file = config_file([
+        json.loads(history.get('v1Compatibility', '{}'))
+        for history in reversed(manifest_schema1.get('history', []))
+    ], [
+        self._GetDiffId(digest)
+        for digest in reversed(self._v2_image.fs_layers())
+    ])
 
-    rootfs = {'diff_ids': diff_ids, 'type': 'layers'}
-
-    for history in reversed(manifest_schema1.get('history')):
-      v1_compatibility = json.loads(history.get('v1Compatibility'))
-      # created_by in history is the cmd which was run to create the layer.
-      # Cmd in container config may be empty array.
-      history = {}
-      if 'container_config' in v1_compatibility:
-        container_config = v1_compatibility.get('container_config')
-        if container_config.get('Cmd'):
-          history['created_by'] = container_config['Cmd'][0]
-
-      if 'created' in v1_compatibility:
-        history['created'] = v1_compatibility.get('created')
-
-      histories += [history]
-
-    v1_compatibility = json.loads(
-        manifest_schema1.get('history', [''])[0].get('v1Compatibility', '{}'))
-
-    config = {
-        'history': histories,
-        'rootfs': rootfs
-    }
-    for key in ['architecture', 'config', 'container', 'container_config',
-                'docker_version', 'os']:
-      if key in v1_compatibility:
-        config[key] = v1_compatibility[key]
-
-    if 'created' in v1_compatibility:
-      config['created'] = v1_compatibility.get('created')
-
-    self._config_file = json.dumps(config, sort_keys=True)
     config_descriptor = {
         'mediaType': docker_http.CONFIG_JSON_MIME,
         'size': len(self._config_file),
@@ -109,20 +124,24 @@ class V22FromV2(v2_2_image.DockerImage):
         'schemaVersion': 2,
         'mediaType': docker_http.MANIFEST_SCHEMA2_MIME,
         'config': config_descriptor,
-        'layers': layers
+        'layers': [
+            {
+                'mediaType': docker_http.LAYER_MIME,
+                'size': self._v2_image.blob_size(digest),
+                'digest': digest
+            }
+            for digest in reversed(self._v2_image.fs_layers())
+        ]
     }
     self._manifest = json.dumps(manifest_schema2, sort_keys=True)
 
-  def _GetDiffIdAndSize(
+  def _GetDiffId(
       self,
       digest
   ):
-    """Unzip the layer blob file and sha256."""
-    buff = self._v2_image.blob(digest)
-    compressed_file = cStringIO.StringIO(buff)
-    decompressed_file = gzip.GzipFile(fileobj=compressed_file, mode='rb')
-    return ('sha256:' + hashlib.sha256(decompressed_file.read()).hexdigest(),
-            len(buff))
+    """Hash the uncompressed layer blob."""
+    return 'sha256:' + hashlib.sha256(
+        self._v2_image.uncompressed_blob(digest)).hexdigest()
 
   def manifest(self):
     """Override."""
@@ -131,6 +150,10 @@ class V22FromV2(v2_2_image.DockerImage):
   def config_file(self):
     """Override."""
     return self._config_file
+
+  def uncompressed_blob(self, digest):
+    """Override."""
+    return self._v2_image.uncompressed_blob(digest)
 
   def blob(self, digest):
     """Override."""
@@ -280,6 +303,10 @@ class V2FromV22(v2_image.DockerImage):
   def manifest(self):
     """Override."""
     return self._manifest
+
+  def uncompressed_blob(self, digest):
+    """Override."""
+    return self._v2_2_image.uncompressed_blob(digest)
 
   def blob(self, digest):
     """Override."""
