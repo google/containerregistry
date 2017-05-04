@@ -167,15 +167,14 @@ class Push(object):
   ):
     """Upload the aufs .tgz for a single layer."""
     # We have a few choices for unchunked uploading:
-    if not self._mount:
-      #   POST to /v2/<name>/blobs/uploads/?digest=<digest>
-      # TODO(user): Not supported by DockerHub
-      self._monolithic_upload(image, digest)
-    else:
-      # or:
-      #   POST /v2/<name>/blobs/uploads/        (no body*)
-      #   PUT  /v2/<name>/blobs/uploads/<uuid>  (full body)
-      self._put_upload(image, digest)
+    #   POST to /v2/<name>/blobs/uploads/?digest=<digest>
+    #   Fastest, but not supported by many registries.
+    # self._monolithic_upload(image, digest)
+    #
+    # or:
+    #   POST /v2/<name>/blobs/uploads/        (no body*)
+    #   PUT  /v2/<name>/blobs/uploads/<uuid>  (full body)
+    self._put_upload(image, digest)
     # or:
     #   POST   /v2/<name>/blobs/uploads/        (no body*)
     #   PATCH  /v2/<name>/blobs/uploads/<uuid>  (full body)
@@ -208,7 +207,7 @@ class Push(object):
             base_url=self._base_url(),
             tag_or_digest=_tag_or_digest(self._name)),
         method='PUT', body=image.manifest(),
-        accepted_codes=[httplib.OK, httplib.ACCEPTED])
+        accepted_codes=[httplib.OK, httplib.CREATED, httplib.ACCEPTED])
 
   def _start_upload(
       self,

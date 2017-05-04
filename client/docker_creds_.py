@@ -176,7 +176,15 @@ class Keychain(object):
     """
   # pytype: enable=bad-return-type
 
-_SCHEMES = ['', 'https://', 'http://']
+_FORMATS = [
+    # Allow naked domains
+    '%s',
+    # Allow scheme-prefixed.
+    'https://%s', 'http://%s',
+    # Allow scheme-prefixes with version in url path.
+    'https://%s/v1/', 'http://%s/v1/',
+    'https://%s/v2/', 'http://%s/v2/',
+]
 
 
 def _GetUserHomeDir():
@@ -213,9 +221,9 @@ class _DefaultKeychain(Keychain):
 
     # Per-registry credential helpers take precedence.
     cred_store = cfg.get('credHelpers', {})
-    for prefix in _SCHEMES:
-      if prefix + name.registry in cred_store:
-        return Helper(cred_store[prefix + name.registry], name)
+    for form in _FORMATS:
+      if form % name.registry in cred_store:
+        return Helper(cred_store[form % name.registry], name)
 
     # A global credential helper is next in precedence.
     if 'credsStore' in cfg:
@@ -223,9 +231,9 @@ class _DefaultKeychain(Keychain):
 
     # Lastly, the 'auths' section directly contains basic auth entries.
     auths = cfg.get('auths', {})
-    for prefix in _SCHEMES:
-      if prefix + name.registry in auths:
-        entry = auths[prefix + name.registry]
+    for form in _FORMATS:
+      if form % name.registry in auths:
+        entry = auths[form % name.registry]
         if 'auth' in entry:
           username, password = base64.b64decode(entry['auth']).split(':', 1)
           return Basic(username, password)
