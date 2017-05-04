@@ -76,6 +76,12 @@ test_image index.docker.io/library/busybox:latest
 # Test pulling from Bintray.io
 test_image jfrog-int-docker-devops-registry.bintray.io/alpine:latest
 
+# Gitlab only works with Python 2.7.9+ because it uses SNI for HTTP.
+# As of this CL, the official python:2.7 image uses 2.7.13.
+# We cannot test this with the gcr.io/cloud-builders/bazel image because
+# it is based on the latest Ubuntu LTS release (14.04) which uses 2.7.6
+test_base registry.gitlab.com/mattmoor/test-project/image:latest python2.7 python:2.7
+
 # Test pulling by digest
 test_image gcr.io/google-containers/pause@sha256:9ce5316f9752b8347484ab0f6778573af15524124d52b93230b9a0dcc987e73e
 
