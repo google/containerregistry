@@ -174,16 +174,20 @@ class Push(object):
     # or:
     #   POST /v2/<name>/blobs/uploads/        (no body*)
     #   PUT  /v2/<name>/blobs/uploads/<uuid>  (full body)
-    self._put_upload(image, digest)
+    #   Next fastest, but there is a mysterious bad interaction
+    #   with Bintray.  This pattern also hasn't been used in
+    #   clients since 1.8, when they switched to the 3-stage
+    #   method below.
+    # self._put_upload(image, digest)
     # or:
     #   POST   /v2/<name>/blobs/uploads/        (no body*)
     #   PATCH  /v2/<name>/blobs/uploads/<uuid>  (full body)
     #   PUT    /v2/<name>/blobs/uploads/<uuid>  (no body)
-    # self._patch_upload(image, digest)
     #
     # * We attempt to perform a cross-repo mount if any repositories are
     # specified in the "mount" parameter. This does a fast copy from a
     # repository that is known to contain this blob and skips the upload.
+    self._patch_upload(image, digest)
 
   def _remote_tag_digest(self):
     """Check the remote for the given manifest by digest."""

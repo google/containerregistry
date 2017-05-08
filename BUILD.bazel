@@ -50,3 +50,13 @@ sh_test(
       "testenv.sh",
     ],
 )
+
+sh_test(
+    name = "pusher_test",
+    size = "large",
+    srcs = ["pusher_test.sh"],
+    data = [
+      ":pusher.par",
+      "testenv.sh",
+    ],
+)
