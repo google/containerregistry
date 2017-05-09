@@ -1,9 +1,32 @@
 sudo: required
+
 dist: trusty
+
 language:
   - java
+
 jdk:
   - oraclejdk8  # Building Bazel requires JDK8.
+
+services:
+  - docker
+
+before_install:
+  # Log into DockerHub
+  - docker login -u googlecontainerregistrytesting -p "${GCRT_PASSWORD}"
+  # Log into GCR
+  - docker login -u _json_key -p "${GCR_JSON_KEY}" https://gcr.io
+  # Log into Quay.io
+  - docker login -u googlecontainerregistrytesting -p "${GCRT_PASSWORD}" quay.io
+  # Log into bintray with an API KEY
+  - |
+    docker login -u googlecontainerregistrytesting -p "${BINTRAY_API_KEY}" \
+      googlecontainerregistrytesting-docker-test-repo.bintray.io
+  # Log into Gitlab
+  - |
+    docker login -u googlecontainerregistrytesting -p "${GCRT_PASSWORD}" \
+      registry.gitlab.com
+
 addons:
   apt:
     sources:
@@ -14,4 +37,5 @@ addons:
 
 script:
   - bazel clean && bazel build //...
-  - bazel clean && bazel test --test_output=errors //...
+  # Run outside of the sandbox to get access to Docker credentials registered above.
+  - bazel clean && bazel test --test_output=errors --strategy=TestRunner=standalone //...

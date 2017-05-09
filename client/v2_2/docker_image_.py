@@ -172,7 +172,7 @@ class FromRegistry(DockerImage):
       manifest = json.loads(self.manifest(validate=False))
       return manifest['schemaVersion'] == 2
     except docker_http.V2DiagnosticException as err:
-      if err.http_status_code == httplib.NOT_FOUND:
+      if err.status == httplib.NOT_FOUND:
         return False
       raise
 

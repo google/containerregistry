@@ -69,9 +69,8 @@ test_image gcr.io/google-appengine/python:latest
 # Test pulling from DockerHub
 test_image index.docker.io/library/busybox:latest
 
-# TODO(user): Re-enable this once they return content-length on blob HEADs
-# # Test pulling from Quay.io
-# test_image quay.io/coreos/etcd:latest
+# Test pulling from Quay.io
+test_image quay.io/coreos/etcd:latest
 
 # Test pulling from Bintray.io
 test_image jfrog-int-docker-devops-registry.bintray.io/alpine:latest

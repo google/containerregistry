@@ -153,7 +153,7 @@ class FromRegistry(DockerImage):
       self.manifest(validate=False)
       return True
     except docker_http.V2DiagnosticException as err:
-      if err.http_status_code == 404:
+      if err.status == httplib.NOT_FOUND:
         return False
       raise
 
