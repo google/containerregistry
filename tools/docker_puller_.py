@@ -59,9 +59,8 @@ def _make_tag_if_digest(
 ):
   if isinstance(name, docker_name.Tag):
     return name
-  return docker_name.Tag('{registry}/{repository}:{tag}'.format(
-      registry=name.registry, repository=name.repository,
-      tag=_DEFAULT_TAG))
+  return docker_name.Tag('{repo}:{tag}'.format(
+      repo=str(name.as_repository()), tag=_DEFAULT_TAG))
 
 
 def main():

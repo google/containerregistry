@@ -49,9 +49,7 @@ def multi_image_tarball(
   #    json
   for (tag, image) in tag_to_image.iteritems():
     # Add this image's repositories entry.
-    repo = '{registry}/{repository}'.format(
-        registry=tag.registry,
-        repository=tag.repository)
+    repo = str(tag.as_repository())
     tags = repositories.get(repo, {})
     tags[tag.tag] = image.top()
     repositories[repo] = tags

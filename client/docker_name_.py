@@ -35,6 +35,9 @@ _DIGEST_CHARS = 'sh:0123456789abcdef'
 _APP = os.path.basename(sys.argv[0]) if sys.argv[0] else 'console'
 USER_AGENT = '//containerregistry/client:%s' % _APP
 
+DEFAULT_DOMAIN = 'index.docker.io'
+DEFAULT_TAG = 'latest'
+
 
 def _check_element(
     name,
@@ -84,18 +87,18 @@ def _check_digest(digest):
 class Registry(object):
   """Stores a docker registry name in a structured form."""
 
-  def __init__(self, name):
-    if not name:
-      raise BadNameException('A Docker registry name must be specified')
+  def __init__(self, name, strict=True):
+    if strict and not name:
+      raise BadNameException('A Docker registry domain must be specified.')
 
     self._registry = name
 
   @property
   def registry(self):
-    return self._registry
+    return self._registry or DEFAULT_DOMAIN
 
   def __str__(self):
-    return self.registry
+    return self._registry
 
   def scope(self, unused_action):
     # The only resource under 'registry' is 'catalog'. http://goo.gl/N9cN9Z
@@ -105,16 +108,24 @@ class Registry(object):
 class Repository(Registry):
   """Stores a docker repository name in a structured form."""
 
-  def __init__(self, name):
+  def __init__(self, name, strict=True):
     if not name:
       raise BadNameException('A Docker image name must be specified')
 
+    domain = ''
+    repo = name
     parts = name.split('/', 1)
-    if len(parts) != 2:
-      raise self._validation_exception(name)
-    super(Repository, self).__init__(parts[0])
+    if len(parts) == 2:
+      # The first part of the repository is treated as the registry domain
+      # iff it contains a '.' or ':' character, otherwise it is all repository
+      # and the domain defaults to DockerHub.
+      if '.' in parts[0] or ':' in parts[0]:
+        domain = parts[0]
+        repo = parts[1]
 
-    self._repository = parts[1]
+    super(Repository, self).__init__(domain, strict=strict)
+
+    self._repository = repo
     _check_repository(self._repository)
 
   def _validation_exception(self, name):
@@ -126,8 +137,12 @@ class Repository(Registry):
     return self._repository
 
   def __str__(self):
-    return '{registry}/{repository}'.format(
-        registry=self.registry, repository=self.repository)
+    base = super(Repository, self).__str__()
+    if base:
+      return '{registry}/{repository}'.format(
+          registry=base, repository=self._repository)
+    else:
+      return self._repository
 
   def scope(self, action):
     return 'repository:{resource}:{action}'.format(
@@ -138,14 +153,24 @@ class Repository(Registry):
 class Tag(Repository):
   """Stores a docker repository tag in a structured form."""
 
-  def __init__(self, name):
+  def __init__(self, name, strict=True):
     parts = name.rsplit(':', 1)
     if len(parts) != 2:
-      raise self._validation_exception(name)
+      if strict:
+        raise self._validation_exception(name)
+      base = name
+      tag = ''
+    else:
+      base = parts[0]
+      tag = parts[1]
 
-    self._tag = parts[1]
-    _check_tag(self._tag)
-    super(Tag, self).__init__(parts[0])
+    self._tag = tag
+    # We don't require a tag, but if we get one check it's valid,
+    # even when not being strict.
+    if self._tag:
+      _check_tag(self._tag)
+    # Parse the (base) repository portion of the name.
+    super(Tag, self).__init__(base, strict=strict)
 
   def _validation_exception(self, name):
     return BadNameException('Docker image name must be fully qualified (e.g.'
@@ -153,10 +178,22 @@ class Tag(Repository):
 
   @property
   def tag(self):
-    return self._tag
+    return self._tag or DEFAULT_TAG
 
   def __str__(self):
-    return '{base}:{tag}'.format(base=super(Tag, self).__str__(), tag=self.tag)
+    base = super(Tag, self).__str__()
+    if self._tag:
+      return '{base}:{tag}'.format(base=base, tag=self._tag)
+    else:
+      return base
+
+  def as_repository(self):
+    # Construct a new Repository object from the string representation
+    # our parent class (Repository) produces.  This is a convenience
+    # method to allow consumers to stringify the repository portion of
+    # a tag or digest without their own format string.
+    # We have already validated, and we don't persist strictness.
+    return Repository(super(Tag, self).__str__(), strict=False)
 
   def __eq__(self, other):
     return (bool(other) and self.repository == other.repository and
@@ -172,14 +209,14 @@ class Tag(Repository):
 class Digest(Repository):
   """Stores a docker repository digest in a structured form."""
 
-  def __init__(self, name):
+  def __init__(self, name, strict=True):
     parts = name.split('@')
     if len(parts) != 2:
       raise self._validation_exception(name)
 
     self._digest = parts[1]
     _check_digest(self._digest)
-    super(Digest, self).__init__(parts[0])
+    super(Digest, self).__init__(parts[0], strict=strict)
 
   def _validation_exception(self, name):
     return BadNameException('Docker image name must be fully qualified (e.g.'
@@ -190,8 +227,16 @@ class Digest(Repository):
     return self._digest
 
   def __str__(self):
-    return '{base}@{digest}'.format(base=super(Digest, self).__str__(),
-                                    digest=self.digest)
+    base = super(Digest, self).__str__()
+    return '{base}@{digest}'.format(base=base, digest=self.digest)
+
+  def as_repository(self):
+    # Construct a new Repository object from the string representation
+    # our parent class (Repository) produces.  This is a convenience
+    # method to allow consumers to stringify the repository portion of
+    # a tag or digest without their own format string.
+    # We have already validated, and we don't persist strictness.
+    return Repository(super(Digest, self).__str__(), strict=False)
 
   def __eq__(self, other):
     return (bool(other) and self._repository == other.repository and

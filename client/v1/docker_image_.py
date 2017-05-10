@@ -243,9 +243,7 @@ def _get_top(tarball, name=None):
       repositories = json.loads(tar.extractfile('./repositories').read())
 
   if name:
-    key = '{registry}/{repository}'.format(
-        registry=name.registry,
-        repository=name.repository)
+    key = str(name.as_repository())
     return repositories[key][name.tag]
 
   if len(repositories) != 1:
