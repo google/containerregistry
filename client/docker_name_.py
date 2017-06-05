@@ -156,8 +156,6 @@ class Tag(Repository):
   def __init__(self, name, strict=True):
     parts = name.rsplit(':', 1)
     if len(parts) != 2:
-      if strict:
-        raise self._validation_exception(name)
       base = name
       tag = ''
     else:
@@ -167,14 +165,12 @@ class Tag(Repository):
     self._tag = tag
     # We don't require a tag, but if we get one check it's valid,
     # even when not being strict.
-    if self._tag:
+    # If we are being strict, we want to validate the tag regardless in case
+    # it's empty.
+    if self._tag or strict:
       _check_tag(self._tag)
     # Parse the (base) repository portion of the name.
     super(Tag, self).__init__(base, strict=strict)
-
-  def _validation_exception(self, name):
-    return BadNameException('Docker image name must be fully qualified (e.g.'
-                            'registry/repository:tag) saw: %s' % name)
 
   @property
   def tag(self):

@@ -393,12 +393,13 @@ class Random(DockerImage):
     for i in xrange(num_layers):
       # Avoid repetitions.
       while True:
-        layer_id = self._next_id(sample)
+        # Typecheck disabled due to b/38395615
+        layer_id = self._next_id(sample)  # pytype: disable=wrong-arg-types
         if layer_id not in self._ancestry:
           self._ancestry += [layer_id]
           blob = blobs[i] if blobs else None
           self._layers[layer_id] = self._next_layer(
-              sample, layer_byte_size, blob)
+              sample, layer_byte_size, blob)  # pytype: disable=wrong-arg-types
           break
 
   def top(self):
@@ -451,7 +452,7 @@ class Random(DockerImage):
     # TODO(user): Consider doing something more creative...
     with tarfile.open(fileobj=buf, mode='w:gz') as tar:
       if blob:
-        info = tarfile.TarInfo(name='./' + self._next_id(sample))
+        info = tarfile.TarInfo(name='./' + self._next_id(sample))  # pytype: disable=wrong-arg-types
         info.size = len(blob)
         tar.addfile(info, fileobj=cStringIO.StringIO(blob))
       # Linux optimization, use dd for data file creation.
@@ -476,7 +477,7 @@ class Random(DockerImage):
           os.rmdir(tempdir)
       else:
         data = sample(string.printable, layer_byte_size)
-        info = tarfile.TarInfo(name='./' + self._next_id(sample))
+        info = tarfile.TarInfo(name='./' + self._next_id(sample))  # pytype: disable=wrong-arg-types
         info.size = len(data)
         tar.addfile(info, fileobj=cStringIO.StringIO(data))
 

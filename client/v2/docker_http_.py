@@ -161,7 +161,8 @@ class Transport(object):
     # Ping once to establish realm, and then get a good credential
     # for use with this transport.
     self._Ping()
-    self._Refresh()
+    if self._authenticated:
+      self._Refresh()
 
   def _Ping(self):
     """Ping the v2 Registry.
@@ -184,8 +185,16 @@ class Transport(object):
         headers=headers)
 
     # We expect a www-authenticate challenge.
-    _CheckState(resp.status == httplib.UNAUTHORIZED,
+    _CheckState(resp.status in [httplib.OK, httplib.UNAUTHORIZED],
                 'Unexpected status: %d' % resp.status)
+
+    # The registry is authenticated iff we have an authentication challenge.
+    self._authenticated = (resp.status == httplib.UNAUTHORIZED)
+    if resp.status == httplib.OK:
+      self._bearer_creds = docker_creds.Anonymous()
+      self._service = 'none'
+      self._realm = 'none'
+      return
 
     challenge = resp['www-authenticate']
     _CheckState(challenge.startswith(_CHALLENGE),
@@ -280,13 +289,15 @@ class Transport(object):
 
     # If the first request fails on a 401 Unauthorized, then refresh the
     # Bearer token and retry.
-    for retry in [True, False]:
+    for retry in [self._authenticated, False]:
       # self._bearer_creds may be changed by self._Refresh(), so do
       # not hoist this.
       headers = {
-          'Authorization': self._bearer_creds.Get(),
           'user-agent': docker_name.USER_AGENT,
       }
+      auth = self._bearer_creds.Get()
+      if auth:
+        headers['Authorization'] = auth
 
       if body:  # Requests w/ bodies should have content-type.
         headers['content-type'] = (content_type if content_type else

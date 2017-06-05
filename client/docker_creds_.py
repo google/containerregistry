@@ -121,6 +121,9 @@ class OAuth2(Basic):
     return self._creds.get_access_token(http=self._transport).access_token
 
 
+_MAGIC_NOT_FOUND_MESSAGE = 'credentials not found in native keychain'
+
+
 class Helper(Basic):
   """This provider wraps a particularly named credential helper."""
 
@@ -138,8 +141,7 @@ class Helper(Basic):
     self._name = name
     self._registry = registry.registry
 
-  @property
-  def suffix(self):
+  def Get(self):
     # Invokes:
     #   echo -n {self._registry} | docker-credential-{self._name} get
     # The resulting JSON blob will have 'Username' and 'Secret' fields.
@@ -154,8 +156,13 @@ class Helper(Basic):
       raise Exception('Error fetching credential for %s, exit status: %d\n%s'
                       % (self._name, p.returncode, stdout))
 
-    blob = json.loads(stdout.decode())
-    return base64.b64encode(blob['Username'] + ':' + blob['Secret'])
+    output = stdout.decode()
+    if output.strip() == _MAGIC_NOT_FOUND_MESSAGE:
+      # Use empty auth when no auth is found.
+      return Anonymous().Get()
+
+    blob = json.loads(output)
+    return Basic(blob['Username'], blob['Secret']).Get()
 
 
 class Keychain(object):
