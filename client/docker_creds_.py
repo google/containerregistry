@@ -152,14 +152,15 @@ class Helper(Basic):
                          stdin=subprocess.PIPE,
                          stderr=subprocess.STDOUT)
     stdout = p.communicate(input=self._registry)[0]
-    if p.returncode != 0:
-      raise Exception('Error fetching credential for %s, exit status: %d\n%s'
-                      % (self._name, p.returncode, stdout))
 
     output = stdout.decode()
     if output.strip() == _MAGIC_NOT_FOUND_MESSAGE:
       # Use empty auth when no auth is found.
       return Anonymous().Get()
+
+    if p.returncode != 0:
+      raise Exception('Error fetching credential for %s, exit status: %d\n%s'
+                      % (self._name, p.returncode, stdout))
 
     blob = json.loads(output)
     return Basic(blob['Username'], blob['Secret']).Get()
