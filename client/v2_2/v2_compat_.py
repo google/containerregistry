@@ -33,6 +33,11 @@ class BadDigestException(Exception):
 EMPTY_TAR_DIGEST = (
     'sha256:a3ed95caeb02ffe68cdd9fd84406680ae93d633cb16422d00e8a7c22955b46d4')
 
+EMPTY_TAR_BYTES = (
+    b'\x1f\x8b\x08\x00\x00\tn\x88\x00\xffb\x18\x05\xa3`\x14\x8cX\x00'
+    '\x08\x00\x00\xff\xff.\xaf\xb5\xef\x00\x04\x00\x00')
+
+
 
 # Expose a way of constructing the config file given just the v1 compat list
 # and a list of diff ids.  This is used for compatibility with v2 images (below)
@@ -306,10 +311,19 @@ class V2FromV22(v2_image.DockerImage):
 
   def uncompressed_blob(self, digest):
     """Override."""
+    if digest == EMPTY_TAR_DIGEST:
+      # See comment in blob().
+      return super(V2FromV22, self).uncompressed_blob(EMPTY_TAR_DIGEST)
     return self._v2_2_image.uncompressed_blob(digest)
 
   def blob(self, digest):
     """Override."""
+    if digest == EMPTY_TAR_DIGEST:
+      # We added this blobsum for 'empty_layer' annotated layers, but the
+      # underlying v2.2 image doesn't necessarily expose them.  So
+      # when we get a request for this special layer, return the raw
+      # bytes ourselves.
+      return EMPTY_TAR_BYTES
     return self._v2_2_image.blob(digest)
 
   # __enter__ and __exit__ allow use as a context manager.
