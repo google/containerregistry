@@ -36,7 +36,29 @@ parser.add_argument('--name', action='store',
 parser.add_argument('--tarball', action='store',
                     help='Where to load the image tarball.')
 
+parser.add_argument('--stamp-info-file', action='append', required=False,
+                    help=('A list of files from which to read substitutions '
+                          'to make in the provided --name, e.g. {BUILD_USER}'))
+
 _THREADS = 8
+
+
+def Tag(name, files):
+  """Perform substitutions in the provided tag name."""
+  format_args = {}
+  for infofile in files or []:
+    with open(infofile) as info:
+      for line in info:
+        line = line.strip('\n')
+        key, value = line.split(' ', 1)
+        if key in format_args:
+          print ('WARNING: Duplicate value for key "%s": '
+                 'using "%s"' % (key, value))
+        format_args[key] = value
+
+  formatted_name = name.format(**format_args)
+
+  return docker_name.Tag(formatted_name)
 
 
 def main():
@@ -50,7 +72,7 @@ def main():
   # This library can support push-by-digest, but the likelihood of a user
   # correctly providing us with the digest without using this library
   # directly is essentially nil.
-  name = docker_name.Tag(args.name)
+  name = Tag(args.name, args.stamp_info_file)
 
   # Resolve the appropriate credential to use based on the standard Docker
   # client logic.

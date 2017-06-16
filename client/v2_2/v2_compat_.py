@@ -111,12 +111,14 @@ class V22FromV2(v2_2_image.DockerImage):
     manifest_schema1 = json.loads(raw_manifest_schema1)
 
     # Compute the config_file for the v2.2 image.
+    # TODO(b/62576117): Remove the pytype disable.
     self._config_file = config_file([
         json.loads(history.get('v1Compatibility', '{}'))
         for history in reversed(manifest_schema1.get('history', []))
     ], [
         self._GetDiffId(digest)
-        for digest in reversed(self._v2_image.fs_layers())
+        for digest in reversed(
+            self._v2_image.fs_layers())  # pytype: disable=wrong-arg-types
     ])
 
     config_descriptor = {
