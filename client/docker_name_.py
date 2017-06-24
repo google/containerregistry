@@ -100,6 +100,15 @@ class Registry(object):
   def __str__(self):
     return self._registry
 
+  def __eq__(self, other):
+    return bool(other) and self.registry == other.registry
+
+  def __ne__(self, other):
+    return not self.__eq__(other)
+
+  def __hash__(self):
+    return hash(self.registry)
+
   def scope(self, unused_action):
     # The only resource under 'registry' is 'catalog'. http://goo.gl/N9cN9Z
     return 'registry:catalog:*'
@@ -143,6 +152,17 @@ class Repository(Registry):
           registry=base, repository=self._repository)
     else:
       return self._repository
+
+  def __eq__(self, other):
+    return (bool(other) and
+            self.registry == other.registry and
+            self.repository == other.repository)
+
+  def __ne__(self, other):
+    return not self.__eq__(other)
+
+  def __hash__(self):
+    return hash((self.registry, self.repository))
 
   def scope(self, action):
     return 'repository:{resource}:{action}'.format(
@@ -192,14 +212,16 @@ class Tag(Repository):
     return Repository(super(Tag, self).__str__(), strict=False)
 
   def __eq__(self, other):
-    return (bool(other) and self.repository == other.repository and
+    return (bool(other) and
+            self.registry == other.registry and
+            self.repository == other.repository and
             self.tag == other.tag)
 
   def __ne__(self, other):
     return not self.__eq__(other)
 
   def __hash__(self):
-    return hash((self.repository, self.tag))
+    return hash((self.registry, self.repository, self.tag))
 
 
 class Digest(Repository):
@@ -235,11 +257,13 @@ class Digest(Repository):
     return Repository(super(Digest, self).__str__(), strict=False)
 
   def __eq__(self, other):
-    return (bool(other) and self._repository == other.repository and
+    return (bool(other) and
+            self.registry == other.registry and
+            self.repository == other.repository and
             self.digest == other.digest)
 
   def __ne__(self, other):
     return not self.__eq__(other)
 
   def __hash__(self):
-    return hash((self.repository, self.digest))
+    return hash((self.registry, self.repository, self.digest))
