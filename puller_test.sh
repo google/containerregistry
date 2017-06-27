@@ -24,7 +24,7 @@ function test_puller() {
   local image=$1
 
   # Test it in our current environment.
-  puller.par --name="${image}" --tarball=/tmp/foo.tar
+  puller.par --name="${image}" --directory=/tmp/
 }
 
 # Test pulling an image from inside a docker container with a
@@ -44,7 +44,7 @@ EOF
   docker build -t puller_test .
 
   docker run -i --rm --entrypoint="${entrypoint}" puller_test \
-    /puller.par --name="${image}" --tarball=/tmp/foo.tar
+    /puller.par --name="${image}" --directory=/tmp/
 
   docker rmi puller_test
 }

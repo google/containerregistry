@@ -28,3 +28,11 @@ from containerregistry.tools import docker_pusher_
 setattr(x, 'docker_pusher', docker_pusher_)
 
 
+from containerregistry.tools import fast_puller_
+setattr(x, 'fast_puller', fast_puller_)
+
+
+from containerregistry.tools import fast_pusher_
+setattr(x, 'fast_pusher', fast_pusher_)
+
+

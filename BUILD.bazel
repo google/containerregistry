@@ -27,16 +27,16 @@ load("@subpar//:subpar.bzl", "par_binary")
 
 par_binary(
    name = "puller",
-   srcs = ["tools/docker_puller_.py"],
-   main = "tools/docker_puller_.py",
+   srcs = ["tools/fast_puller_.py"],
+   main = "tools/fast_puller_.py",
    visibility = ["//visibility:public"],
    deps = [":containerregistry"]
 )
 
 par_binary(
    name = "pusher",
-   srcs = ["tools/docker_pusher_.py"],
-   main = "tools/docker_pusher_.py",
+   srcs = ["tools/fast_pusher_.py"],
+   main = "tools/fast_pusher_.py",
    visibility = ["//visibility:public"],
    deps = [":containerregistry"]
 )

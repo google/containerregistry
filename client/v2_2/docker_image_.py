@@ -376,14 +376,16 @@ class FromTarball(DockerImage):
     """Override."""
     if not self._blob_names:
       self._populate_manifest_and_blobs()
-    return self._content(self._blob_names[digest], memoize=False)
+    return self._content(self._blob_names[digest],  # pytype: disable=none-attr
+                         memoize=False)
 
   # Could be large, do not memoize
   def blob(self, digest):
     """Override."""
     if not self._blob_names:
       self._populate_manifest_and_blobs()
-    return self._gzipped_content(self._blob_names[digest])
+    return self._gzipped_content(
+        self._blob_names[digest])  # pytype: disable=none-attr
 
   def _resolve_tag(self):
     """Resolve the singleton tag this tarball contains using legacy methods."""
@@ -437,6 +439,108 @@ class FromTarball(DockerImage):
     # 1) Allow use of this library for reading the config_file() from the image
     #   layer shards Bazel produces.
     # 2) Performance of the case where all we read is the config_file().
+
+    return self
+
+  def __exit__(self, unused_type, unused_value, unused_traceback):
+    pass
+
+
+class FromDisk(DockerImage):
+  """This accesses a more efficient on-disk format than FromTarball.
+
+  FromDisk reads an on-disk format optimized for use with push and pull.
+
+  It is expected that the number of layers in config_file's rootfs.diff_ids
+  matches: count(legacy_base.layers) + len(layers).
+
+  Layers are drawn from legacy_base first (it is expected to be the base),
+  and then from layers.
+
+  This is effectively the dual of the save.fast method, and is intended for use
+  with Bazel's rules_docker.
+
+  Args:
+    config_file: the contents of the config file.
+    layers: a list of pairs.  The first element is the path to a file containing
+        the second element's sha256.  The second element is the .tar.gz of a
+        filesystem layer.  These are ordered as they'd appear in the manifest.
+    legacy_base: Optionally, the path to a legacy base image in FromTarball form
+  """
+
+  def __init__(
+      self,
+      config_file,
+      layers,
+      legacy_base=None
+  ):
+    self._config = config_file
+    self._layers = []
+    self._layer_to_filename = {}
+    for (name_file, content_file) in layers:
+      with open(name_file, 'r') as reader:
+        layer_name = 'sha256:' + reader.read()
+      self._layers.append(layer_name)
+      self._layer_to_filename[layer_name] = content_file
+
+    self._legacy_base = None
+    if legacy_base:
+      with FromTarball(legacy_base) as base:
+        self._legacy_base = base
+
+  def manifest(self):
+    """Override."""
+    return self._manifest
+
+  def config_file(self):
+    """Override."""
+    return self._config
+
+  # Could be large, do not memoize
+  def uncompressed_blob(self, digest):
+    """Override."""
+    if digest not in self._layer_to_filename:
+      # Leverage the FromTarball fast-path.
+      return self._legacy_base.uncompressed_blob(digest)
+    return super(FromDisk, self).uncompressed_blob(digest)
+
+  # Could be large, do not memoize
+  def blob(self, digest):
+    """Override."""
+    if digest not in self._layer_to_filename:
+      return self._legacy_base.blob(digest)
+    with open(self._layer_to_filename[digest], 'r') as reader:
+      return reader.read()
+
+  def blob_size(self, digest):
+    """Override."""
+    if digest not in self._layer_to_filename:
+      return self._legacy_base.blob_size(digest)
+    info = os.stat(self._layer_to_filename[digest])
+    return info.st_size
+
+  # __enter__ and __exit__ allow use as a context manager.
+  def __enter__(self):
+    base_layers = []
+    if self._legacy_base:
+      base_layers = json.loads(self._legacy_base.manifest())['layers']
+    self._manifest = json.dumps({
+        'schemaVersion': 2,
+        'mediaType': docker_http.MANIFEST_SCHEMA2_MIME,
+        'config': {
+            'mediaType': docker_http.CONFIG_JSON_MIME,
+            'size': len(self.config_file()),
+            'digest': 'sha256:' + hashlib.sha256(self.config_file()).hexdigest()
+        },
+        'layers': base_layers + [
+            {
+                'mediaType': docker_http.LAYER_MIME,
+                'size': self.blob_size(digest),
+                'digest': digest
+            }
+            for digest in self._layers
+        ]
+    }, sort_keys=True)
 
     return self
 
