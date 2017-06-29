@@ -153,7 +153,7 @@ class Push(object):
     resp, unused_content = self._transport.Request(
         location, method='PATCH', body=image.blob(digest),
         content_type='application/octet-stream',
-        accepted_codes=[httplib.NO_CONTENT, httplib.ACCEPTED])
+        accepted_codes=[httplib.NO_CONTENT, httplib.ACCEPTED, httplib.CREATED])
 
     location = self._add_digest(resp['location'], digest)
     self._transport.Request(

@@ -128,7 +128,10 @@ def _CheckState(
     raise BadStateException(message if message else 'Unknown')
 
 
-_CHALLENGE = 'Bearer '
+_ANONYMOUS = ''
+_BASIC = 'Basic'
+_BEARER = 'Bearer'
+
 _REALM_PFX = 'realm='
 _SERVICE_PFX = 'service='
 
@@ -175,8 +178,12 @@ class Transport(object):
     # Ping once to establish realm, and then get a good credential
     # for use with this transport.
     self._Ping()
-    if self._authenticated:
+    if self._authentication == _BEARER:
       self._Refresh()
+    elif self._authentication == _BASIC:
+      self._creds = self._basic_creds
+    else:
+      self._creds = docker_creds.Anonymous()
 
   def _Ping(self):
     """Ping the v2 Registry.
@@ -203,21 +210,26 @@ class Transport(object):
                 'Unexpected status: %d' % resp.status)
 
     # The registry is authenticated iff we have an authentication challenge.
-    self._authenticated = (resp.status == httplib.UNAUTHORIZED)
     if resp.status == httplib.OK:
-      self._bearer_creds = docker_creds.Anonymous()
+      self._authentication = _ANONYMOUS
       self._service = 'none'
       self._realm = 'none'
       return
 
     challenge = resp['www-authenticate']
-    _CheckState(challenge.startswith(_CHALLENGE),
-                'Unexpected "www-authenticate" header: %s' % challenge)
+    _CheckState(' ' in challenge,
+                'Unexpected "www-authenticate" header form: %s' % challenge)
+
+    (self._authentication, remainder) = challenge.split(' ', 1)
+
+    _CheckState(self._authentication in [_BASIC, _BEARER],
+                'Unexpected "www-authenticate" challenge type: %s'
+                % self._authentication)
 
     # Default "_service" to the registry
     self._service = self._name.registry
 
-    tokens = challenge[len(_CHALLENGE):].split(',')
+    tokens = remainder.split(',')
     for t in tokens:
       if t.startswith(_REALM_PFX):
         self._realm = t[len(_REALM_PFX):].strip('"')
@@ -236,7 +248,7 @@ class Transport(object):
     """Refreshes the Bearer token credentials underlying this transport.
 
     This utilizes the "realm" and "service" established during _Ping to
-    set up _bearer_creds with up-to-date credentials, by passing the
+    set up _creds with up-to-date credentials, by passing the
     client-provided _basic_creds to the authorization realm.
 
     This is generally called under two circumstances:
@@ -269,7 +281,7 @@ class Transport(object):
 
     with self._lock:
       # We have successfully reauthenticated.
-      self._bearer_creds = v2_2_creds.Bearer(wrapper_object['token'])
+      self._creds = v2_2_creds.Bearer(wrapper_object['token'])
 
   # pylint: disable=invalid-name
   def Request(
@@ -304,14 +316,14 @@ class Transport(object):
       method = 'GET' if not body else 'PUT'
 
     # If the first request fails on a 401 Unauthorized, then refresh the
-    # Bearer token and retry.
-    for retry in [self._authenticated, False]:
-      # self._bearer_creds may be changed by self._Refresh(), so do
+    # Bearer token and retry, if the authentication mode is bearer.
+    for retry in [self._authentication == _BEARER, False]:
+      # self._creds may be changed by self._Refresh(), so do
       # not hoist this.
       headers = {
           'user-agent': docker_name.USER_AGENT,
       }
-      auth = self._bearer_creds.Get()
+      auth = self._creds.Get()
       if auth:
         headers['Authorization'] = auth
 
