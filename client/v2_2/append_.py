@@ -73,7 +73,8 @@ class Layer(docker_image.DockerImage):
     config_file['history'].insert(0, cfg)
 
     self._config_file = json.dumps(config_file)
-    manifest['config']['digest'] = hashlib.sha256(self._config_file).hexdigest()
+    manifest['config']['digest'] = (
+        'sha256:' + hashlib.sha256(self._config_file).hexdigest())
     self._manifest = json.dumps(manifest)
 
   def manifest(self):

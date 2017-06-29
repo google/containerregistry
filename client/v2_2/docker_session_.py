@@ -215,7 +215,7 @@ class Push(object):
     if resp.status == httplib.NOT_FOUND:  # pytype: disable=attribute-error
       return None
 
-    return resp['docker-content-digest']
+    return resp.get('docker-content-digest')
 
   def _put_manifest(self, image):
     """Upload the manifest for this image."""
