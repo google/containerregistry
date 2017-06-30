@@ -224,7 +224,7 @@ class FromRegistry(DockerImage):
     if digest != computed:
       raise DigestMismatchedError(
           'The returned content\'s digest did not match its content-address, '
-          '%s vs. %s' % (digest, computed))
+          '%s vs. %s' % (digest, computed if c else '(content was empty)'))
     return c
 
   def catalog(self, page_size=100):

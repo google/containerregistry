@@ -32,6 +32,10 @@ from containerregistry.tools import fast_puller_
 setattr(x, 'fast_puller', fast_puller_)
 
 
+from containerregistry.tools import fast_importer_
+setattr(x, 'fast_importer', fast_importer_)
+
+
 from containerregistry.tools import fast_pusher_
 setattr(x, 'fast_pusher', fast_pusher_)
 
