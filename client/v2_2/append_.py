@@ -57,13 +57,13 @@ class Layer(docker_image.DockerImage):
     if tar_gz:
       self._blob = tar_gz
       self._blob_sum = 'sha256:' + hashlib.sha256(self._blob).hexdigest()
-      manifest['layers'].insert(0, {
+      manifest['layers'].append({
           'digest': self._blob_sum,
           'mediaType': docker_http.MANIFEST_SCHEMA2_MIME,
           'size': len(self._blob),
       })
-      config_file['rootfs']['diff_ids'].insert(
-          0, 'sha256:' + hashlib.sha256(
+      config_file['rootfs']['diff_ids'].append(
+          'sha256:' + hashlib.sha256(
               self.uncompressed_blob(self._blob_sum)).hexdigest())
     else:
       self._blob_sum = _EMPTY_LAYER_TAR_ID
@@ -72,10 +72,10 @@ class Layer(docker_image.DockerImage):
 
     config_file['history'].insert(0, cfg)
 
-    self._config_file = json.dumps(config_file)
+    self._config_file = json.dumps(config_file, sort_keys=True)
     manifest['config']['digest'] = (
         'sha256:' + hashlib.sha256(self._config_file).hexdigest())
-    self._manifest = json.dumps(manifest)
+    self._manifest = json.dumps(manifest, sort_keys=True)
 
   def manifest(self):
     """Override."""

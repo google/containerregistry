@@ -40,7 +40,7 @@ class DigestMismatchedError(Exception):
 class DockerImage(object):
   """Interface for implementations that interact with Docker images."""
 
-  __metaclass__ = abc.ABCMeta  # For enforcing that methods are overriden.
+  __metaclass__ = abc.ABCMeta  # For enforcing that methods are overridden.
 
   def fs_layers(self):
     """The ordered collection of filesystem layers that comprise this image."""
@@ -54,6 +54,16 @@ class DockerImage(object):
   def blob_set(self):
     """The unique set of blobs that compose to create the filesystem."""
     return set(self.fs_layers() + [self.config_blob()])
+
+  def digest(self):
+    """The digest of the manifest."""
+    return util.Digest(self.manifest())
+
+  def media_type(self):
+    """The media type of the manifest."""
+    manifest = json.loads(self.manifest())
+    # Since 'mediaType' is optional for OCI images, assume OCI if it's missing.
+    return manifest.get('mediaType', docker_http.OCI_MANIFEST_MIME)
 
   # pytype: disable=bad-return-type
   @abc.abstractmethod
@@ -105,6 +115,10 @@ class DockerImage(object):
   def __exit__(self, unused_type, unused_value, unused_traceback):
     """Close the image."""
 
+  def __str__(self):
+    """A human-readable representation of the image."""
+    return str(type(self))
+
 
 class FromRegistry(DockerImage):
   """This accesses a docker image hosted on a registry (non-local)."""
@@ -113,10 +127,12 @@ class FromRegistry(DockerImage):
       self,
       name,
       basic_creds,
-      transport):
+      transport,
+      accepted_mimes=docker_http.MANIFEST_SCHEMA2_MIMES):
     self._name = name
     self._creds = basic_creds
     self._original_transport = transport
+    self._accepted_mimes = accepted_mimes
     self._response = {}
 
   def _content(
@@ -170,7 +186,9 @@ class FromRegistry(DockerImage):
   def exists(self):
     try:
       manifest = json.loads(self.manifest(validate=False))
-      return manifest['schemaVersion'] == 2
+      return (manifest['schemaVersion'] == 2 and
+              'layers' in manifest and
+              self.media_type() in self._accepted_mimes)
     except docker_http.V2DiagnosticException as err:
       if err.status == httplib.NOT_FOUND:
         return False
@@ -179,13 +197,12 @@ class FromRegistry(DockerImage):
   def manifest(self, validate=True):
     """Override."""
     # GET server1/v2/<name>/manifests/<tag_or_digest>
-    accepted_mimes = docker_http.MANIFEST_SCHEMA2_MIMES
 
     if isinstance(self._name, docker_name.Tag):
-      return self._content('manifests/' + self._name.tag, accepted_mimes)
+      return self._content('manifests/' + self._name.tag, self._accepted_mimes)
     else:
       assert isinstance(self._name, docker_name.Digest)
-      c = self._content('manifests/' + self._name.digest, accepted_mimes)
+      c = self._content('manifests/' + self._name.digest, self._accepted_mimes)
       computed = util.Digest(c)
       if validate and computed != self._name.digest:
         raise DigestMismatchedError(
@@ -260,6 +277,9 @@ class FromRegistry(DockerImage):
   def __exit__(self, unused_type, unused_value, unused_traceback):
     pass
 
+  def __str__(self):
+    return '<docker_image.FromRegistry name: {}>'.format(str(self._name))
+
 
 # Gzip injects a timestamp into its output, which makes its output and digest
 # non-deterministic.  To get reproducible pushes, freeze time.
@@ -331,6 +351,7 @@ class FromTarball(DockerImage):
 
   def _populate_manifest_and_blobs(self):
     """Populates self._manifest and self._blob_names."""
+    # TODO(user): Update mimes here for oci_compat.
     manifest = {
         'mediaType': docker_http.MANIFEST_SCHEMA2_MIME,
         'schemaVersion': 2,
@@ -524,6 +545,7 @@ class FromDisk(DockerImage):
     base_layers = []
     if self._legacy_base:
       base_layers = json.loads(self._legacy_base.manifest())['layers']
+    # TODO(user): Update mimes here for oci_compat.
     self._manifest = json.dumps({
         'schemaVersion': 2,
         'mediaType': docker_http.MANIFEST_SCHEMA2_MIME,

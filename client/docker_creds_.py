@@ -151,7 +151,9 @@ class Helper(Basic):
                          stdout=subprocess.PIPE,
                          stdin=subprocess.PIPE,
                          stderr=subprocess.STDOUT)
-    stdout = p.communicate(input=self._registry)[0]
+    # Some keychains expect a scheme:
+    # https://github.com/bazelbuild/rules_docker/issues/111
+    stdout = p.communicate(input='https://' + self._registry)[0]
 
     output = stdout.decode()
     if output.strip() == _MAGIC_NOT_FOUND_MESSAGE:

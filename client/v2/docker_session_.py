@@ -26,7 +26,6 @@ from containerregistry.client import docker_creds
 from containerregistry.client import docker_name
 from containerregistry.client.v2 import docker_http
 from containerregistry.client.v2 import docker_image
-from containerregistry.client.v2 import util
 import httplib2
 
 
@@ -91,13 +90,11 @@ class Push(object):
 
   def _manifest_exists(self, image):
     """Check the remote for the given manifest by digest."""
-    manifest_digest = util.Digest(image.manifest())
-
     # GET the manifest by digest, and check for 200
     resp, unused_content = self._transport.Request(
         '{base_url}/manifests/{digest}'.format(
             base_url=self._base_url(),
-            digest=manifest_digest),
+            digest=image.digest()),
         method='GET', accepted_codes=[httplib.OK, httplib.NOT_FOUND])
 
     return resp.status == httplib.OK  # pytype: disable=attribute-error
@@ -261,8 +258,7 @@ class Push(object):
     # checks (they must exist).
     if self._manifest_exists(image):
       if isinstance(self._name, docker_name.Tag):
-        manifest_digest = util.Digest(image.manifest())
-        if self._remote_tag_digest() == manifest_digest:
+        if self._remote_tag_digest() == image.digest():
           logging.info('Tag points to the right manifest, skipping push.')
           return
         logging.info('Manifest exists, skipping blob uploads and pushing tag.')

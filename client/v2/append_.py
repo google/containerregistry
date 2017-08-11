@@ -56,18 +56,21 @@ class Layer(docker_image.DockerImage):
     """
     self._base = base
 
-    if tar_gz:
-      self._blob = tar_gz
-      self._blob_sum = 'sha256:' + hashlib.sha256(self._blob).hexdigest()
-    else:
-      self._blob_sum = _EMPTY_LAYER_TAR_ID
-      self._blob = ''
-
     unsigned_manifest, unused_signatures = util.DetachSignatures(
         self._base.manifest())
     manifest = json.loads(unsigned_manifest)
-    manifest['fsLayers'].insert(0, {'blobSum': self._blob_sum})
     v1_compat = json.loads(manifest['history'][0]['v1Compatibility'])
+
+    if tar_gz:
+      self._blob = tar_gz
+      self._blob_sum = 'sha256:' + hashlib.sha256(self._blob).hexdigest()
+      v1_compat['throwaway'] = False
+    else:
+      self._blob_sum = _EMPTY_LAYER_TAR_ID
+      self._blob = ''
+      v1_compat['throwaway'] = True
+
+    manifest['fsLayers'].insert(0, {'blobSum': self._blob_sum})
     v1_compat['parent'] = v1_compat['id']
     v1_compat['id'] = binascii.hexlify(os.urandom(32))
 

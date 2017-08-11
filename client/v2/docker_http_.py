@@ -291,7 +291,7 @@ class Transport(object):
 
     Raises:
       BadStateException: an unexpected internal state has been encountered.
-      V2DiagnosticException: an error has occured interacting with v2.
+      V2DiagnosticException: an error has occurred interacting with v2.
 
     Returns:
       The response of the HTTP request, and its contents.

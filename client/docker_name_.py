@@ -101,7 +101,10 @@ class Registry(object):
     return self._registry
 
   def __eq__(self, other):
-    return bool(other) and self.registry == other.registry
+    return (bool(other) and
+            # pylint: disable=unidiomatic-typecheck
+            type(self) == type(other) and
+            self.registry == other.registry)
 
   def __ne__(self, other):
     return not self.__eq__(other)
@@ -155,6 +158,8 @@ class Repository(Registry):
 
   def __eq__(self, other):
     return (bool(other) and
+            # pylint: disable=unidiomatic-typecheck
+            type(self) == type(other) and
             self.registry == other.registry and
             self.repository == other.repository)
 
@@ -213,6 +218,8 @@ class Tag(Repository):
 
   def __eq__(self, other):
     return (bool(other) and
+            # pylint: disable=unidiomatic-typecheck
+            type(self) == type(other) and
             self.registry == other.registry and
             self.repository == other.repository and
             self.tag == other.tag)
@@ -258,6 +265,8 @@ class Digest(Repository):
 
   def __eq__(self, other):
     return (bool(other) and
+            # pylint: disable=unidiomatic-typecheck
+            type(self) == type(other) and
             self.registry == other.registry and
             self.repository == other.repository and
             self.digest == other.digest)

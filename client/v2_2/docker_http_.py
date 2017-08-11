@@ -42,9 +42,19 @@ MANIFEST_SCHEMA2_MIME = 'application/vnd.docker.distribution.manifest.v2+json'
 MANIFEST_LIST_MIME = 'application/vnd.docker.distribution.manifest.list.v2+json'
 LAYER_MIME = 'application/vnd.docker.image.rootfs.diff.tar.gzip'
 CONFIG_JSON_MIME = 'application/vnd.docker.container.image.v1+json'
+
+OCI_MANIFEST_MIME = 'application/vnd.oci.image.manifest.v1+json'
+OCI_IMAGE_INDEX_MIME = 'application/vnd.oci.image.index.v1+json'
+OCI_LAYER_MIME = 'application/vnd.oci.image.layer.v1.tar+gzip'
+OCI_CONFIG_JSON_MIME = 'application/vnd.oci.image.config.v1+json'
+
 MANIFEST_SCHEMA1_MIMES = [MANIFEST_SCHEMA1_MIME, MANIFEST_SCHEMA1_SIGNED_MIME]
 MANIFEST_SCHEMA2_MIMES = [MANIFEST_SCHEMA2_MIME]
+OCI_MANIFEST_MIMES = [OCI_MANIFEST_MIME]
+
 SUPPORTED_MANIFEST_MIMES = [MANIFEST_SCHEMA1_MIMES, MANIFEST_SCHEMA2_MIME]
+
+MANIFEST_LIST_MIMES = [MANIFEST_LIST_MIME]
 
 
 class Diagnostic(object):
@@ -307,7 +317,7 @@ class Transport(object):
 
     Raises:
       BadStateException: an unexpected internal state has been encountered.
-      V2DiagnosticException: an error has occured interacting with v2.
+      V2DiagnosticException: an error has occurred interacting with v2.
 
     Returns:
       The response of the HTTP request, and its contents.

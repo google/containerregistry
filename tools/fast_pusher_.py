@@ -73,6 +73,10 @@ def Tag(name, files):
 
   formatted_name = name.format(**format_args)
 
+  if files:
+    print('{name} was resolved to {fname}'.format(
+        name=name, fname=formatted_name))
+
   return docker_name.Tag(formatted_name)
 
 
@@ -117,6 +121,8 @@ def main():
     with v2_2_image.FromDisk(config, zip(args.digest or [], args.layer or []),
                              legacy_base=args.tarball) as v2_2_img:
       session.upload(v2_2_img)
+      print('{name} was published with digest: {digest}'.format(
+          name=name, digest=v2_2_img.digest()))
 
 
 if __name__ == '__main__':
