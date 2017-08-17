@@ -26,6 +26,7 @@ from containerregistry.client import docker_creds
 from containerregistry.client import docker_name
 from containerregistry.client.v2_2 import docker_http
 from containerregistry.client.v2_2 import docker_image
+from containerregistry.client.v2_2 import docker_image_list as image_list
 import httplib2
 
 
@@ -214,12 +215,21 @@ class Push(object):
 
     return resp.get('docker-content-digest')
 
-  def _put_manifest(self, image):
+  def _put_manifest(
+      self,
+      image,
+      use_digest=False
+  ):
     """Upload the manifest for this image."""
+    if use_digest:
+      tag_or_digest = image.digest()
+    else:
+      tag_or_digest = _tag_or_digest(self._name)
+
     self._transport.Request(
         '{base_url}/manifests/{tag_or_digest}'.format(
             base_url=self._base_url(),
-            tag_or_digest=_tag_or_digest(self._name)),
+            tag_or_digest=tag_or_digest),
         method='PUT',
         body=image.manifest(),
         content_type=image.media_type(),
@@ -265,11 +275,16 @@ class Push(object):
     self._put_blob(image, digest)
     logging.info('Layer %s pushed.', digest)
 
-  def upload(self, image):
+  def upload(
+      self,
+      image,
+      use_digest=False
+  ):
     """Upload the layers of the given image.
 
     Args:
       image: the image to upload.
+      use_digest: use the manifest digest (i.e. not tag) as the image reference.
     """
     # If the manifest (by digest) exists, then avoid N layer existence
     # checks (they must exist).
@@ -281,6 +296,11 @@ class Push(object):
         logging.info('Manifest exists, skipping blob uploads and pushing tag.')
       else:
         logging.info('Manifest exists, skipping upload.')
+    elif isinstance(image, image_list.DockerImageList):
+      for _, _, child in image:
+        # TODO(user): Refactor so that the threadpool is shared.
+        with child:
+          self.upload(child, use_digest=True)
     elif self._threads == 1:
       for digest in image.blob_set():
         self._upload_one(image, digest)
@@ -294,7 +314,7 @@ class Push(object):
           future.result()
 
     # This should complete the upload by uploading the manifest.
-    self._put_manifest(image)
+    self._put_manifest(image, use_digest=use_digest)
 
   # __enter__ and __exit__ allow use as a context manager.
   def __enter__(self):
