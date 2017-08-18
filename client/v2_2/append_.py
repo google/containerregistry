@@ -39,13 +39,16 @@ class Layer(docker_image.DockerImage):
   def __init__(
       self,
       base,
-      tar_gz):
+      tar_gz,
+      diff_id=None):
     """Creates a new layer on top of a base with optional tar.gz.
 
     Args:
       base: a base DockerImage for a new layer.
       tar_gz: an optional gzipped tarball passed as a string with filesystem
           changeset.
+      diff_id: an optional string containing the digest of the
+          uncompressed tar_gz.
     """
     self._base = base
     manifest = json.loads(self._base.manifest())
@@ -62,9 +65,11 @@ class Layer(docker_image.DockerImage):
           'mediaType': docker_http.MANIFEST_SCHEMA2_MIME,
           'size': len(self._blob),
       })
-      config_file['rootfs']['diff_ids'].append(
-          'sha256:' + hashlib.sha256(
-              self.uncompressed_blob(self._blob_sum)).hexdigest())
+      if not diff_id:
+        diff_id = 'sha256:' + hashlib.sha256(
+            self.uncompressed_blob(self._blob_sum)).hexdigest()
+
+      config_file['rootfs']['diff_ids'].append(diff_id)
     else:
       self._blob_sum = _EMPTY_LAYER_TAR_ID
       self._blob = ''

@@ -40,6 +40,10 @@ from containerregistry.client.v2_2 import v2_compat_
 setattr(x, 'v2_compat', v2_compat_)
 
 
+from containerregistry.client.v2_2 import docker_image_list_
+setattr(x, 'docker_image_list', docker_image_list_)
+
+
 from containerregistry.client.v2_2 import docker_session_
 setattr(x, 'docker_session', docker_session_)
 

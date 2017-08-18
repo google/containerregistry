@@ -32,6 +32,14 @@ py_library(
 load("@subpar//:subpar.bzl", "par_binary")
 
 par_binary(
+    name = "appender",
+    srcs = ["tools/docker_appender_.py"],
+    main = "tools/docker_appender_.py",
+    visibility = ["//visibility:public"],
+    deps = [":containerregistry"],
+)
+
+par_binary(
     name = "puller",
     srcs = ["tools/fast_puller_.py"],
     main = "tools/fast_puller_.py",
@@ -53,6 +61,16 @@ par_binary(
     main = "tools/fast_pusher_.py",
     visibility = ["//visibility:public"],
     deps = [":containerregistry"],
+)
+
+sh_test(
+    name = "appender_test",
+    size = "large",
+    srcs = ["appender_test.sh"],
+    data = [
+        "testenv.sh",
+        ":appender.par",
+    ],
 )
 
 sh_test(
