@@ -120,6 +120,58 @@ class DockerImage(object):
     return str(type(self))
 
 
+class Delegate(DockerImage):
+  """Forwards calls to the underlying image."""
+
+  def __init__(self, image):
+    """Constructor.
+
+    Args:
+      image: a DockerImage on which __enter__ has already been called.
+    """
+    self._image = image
+
+  def manifest(self):
+    """Override."""
+    return self._image.manifest()
+
+  def media_type(self):
+    """Override."""
+    return self._image.media_type()
+
+  def fs_layers(self):
+    """Override."""
+    return self._image.fs_layers()
+
+  def config_blob(self):
+    """Override."""
+    return self._image.config_blob()
+
+  def blob_set(self):
+    """Override."""
+    return self._image.blob_set()
+
+  def config_file(self):
+    """Override."""
+    return self._image.config_file()
+
+  def blob_size(self, digest):
+    """Override."""
+    return self._image.blob_size(digest)
+
+  def blob(self, digest):
+    """Override."""
+    return self._image.blob(digest)
+
+  def uncompressed_blob(self, digest):
+    """Override."""
+    return self._image.uncompressed_blob(digest)
+
+  def __str__(self):
+    """Override."""
+    return str(self._image)
+
+
 class FromRegistry(DockerImage):
   """This accesses a docker image hosted on a registry (non-local)."""
 
@@ -310,6 +362,7 @@ class FromTarball(DockerImage):
     self._name = name
     self._manifest = None
     self._blob_names = None
+    self._config_blob = None
 
   def _content(self, name, memoize=True):
     """Fetches a particular path's contents from the tarball."""
@@ -352,12 +405,12 @@ class FromTarball(DockerImage):
   def _populate_manifest_and_blobs(self):
     """Populates self._manifest and self._blob_names."""
     # TODO(user): Update mimes here for oci_compat.
+    config_blob = 'sha256:' + hashlib.sha256(self.config_file()).hexdigest()
     manifest = {
         'mediaType': docker_http.MANIFEST_SCHEMA2_MIME,
         'schemaVersion': 2,
         'config': {
-            'digest': 'sha256:' + hashlib.sha256(
-                self.config_file()).hexdigest(),
+            'digest': config_blob,
             'mediaType': docker_http.CONFIG_JSON_MIME,
             'size': len(self.config_file())
         },
@@ -381,6 +434,7 @@ class FromTarball(DockerImage):
     with self._lock:
       self._manifest = manifest
       self._blob_names = blob_names
+      self._config_blob = config_blob
 
   def manifest(self):
     """Override."""
@@ -405,6 +459,8 @@ class FromTarball(DockerImage):
     """Override."""
     if not self._blob_names:
       self._populate_manifest_and_blobs()
+    if digest == self._config_blob:
+      return self.config_file()
     return self._gzipped_content(
         self._blob_names[digest])  # pytype: disable=none-attr
 

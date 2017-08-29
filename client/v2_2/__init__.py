@@ -36,6 +36,10 @@ from containerregistry.client.v2_2 import append_
 setattr(x, 'append', append_)
 
 
+from containerregistry.client.v2_2 import oci_compat_
+setattr(x, 'oci_compat', oci_compat_)
+
+
 from containerregistry.client.v2_2 import v2_compat_
 setattr(x, 'v2_compat', v2_compat_)
 
