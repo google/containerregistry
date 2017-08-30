@@ -26,6 +26,7 @@ from containerregistry.client import docker_creds
 from containerregistry.client import docker_name
 from containerregistry.client.v2_2 import docker_image as v2_2_image
 from containerregistry.client.v2_2 import docker_session
+from containerregistry.client.v2_2 import oci_compat
 from containerregistry.tools import patched
 from containerregistry.transport import transport_pool
 
@@ -54,6 +55,9 @@ parser.add_argument('--layer', action='append',
 parser.add_argument('--stamp-info-file', action='append', required=False,
                     help=('A list of files from which to read substitutions '
                           'to make in the provided --name, e.g. {BUILD_USER}'))
+
+parser.add_argument('--oci', action='store_true',
+                    help='Push the image with an OCI Manifest.')
 
 _THREADS = 8
 
@@ -120,9 +124,16 @@ def main():
   with docker_session.Push(name, creds, transport, threads=_THREADS) as session:
     with v2_2_image.FromDisk(config, zip(args.digest or [], args.layer or []),
                              legacy_base=args.tarball) as v2_2_img:
-      session.upload(v2_2_img)
+      if args.oci:
+        with oci_compat.OCIFromV22(v2_2_img) as oci_img:
+          session.upload(oci_img)
+          digest = oci_img.digest()
+      else:
+        session.upload(v2_2_img)
+        digest = v2_2_img.digest()
+
       print('{name} was published with digest: {digest}'.format(
-          name=name, digest=v2_2_img.digest()))
+          name=name, digest=digest))
 
 
 if __name__ == '__main__':
