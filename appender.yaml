@@ -13,7 +13,7 @@ steps:
 - name: gcr.io/cloud-builders/gsutil
   args: [
     'cp',
-    'bazel-bin/puller.par',
+    'bazel-bin/appender.par',
     'gs://containerregistry-releases/$TAG_NAME/appender.par'
   ]
 

@@ -21,32 +21,45 @@ import os
 
 
 _OverridesT = namedtuple('OverridesT', [
-    'layers', 'entrypoint', 'cmd', 'env', 'labels', 'ports',
-    'volumes', 'workdir', 'user', 'author', 'created_by'
+    'layers', 'entrypoint', 'cmd', 'env', 'labels', 'ports', 'volumes',
+    'workdir', 'user', 'author', 'created_by', 'creation_time'
 ])
+
+# Unix epoch 0, representable in 32 bits.
+_DEFAULT_TIMESTAMP = '1970-01-01T00:00:00Z'
 
 
 class Overrides(_OverridesT):
   """Docker image configuration options."""
 
-  def __new__(
-      cls,
-      layers=None,
-      entrypoint=None,
-      cmd=None,
-      user=None,
-      labels=None,
-      env=None,
-      ports=None,
-      volumes=None,
-      workdir=None,
-      author=None,
-      created_by=None):
+  def __new__(cls,
+              layers=None,
+              entrypoint=None,
+              cmd=None,
+              user=None,
+              labels=None,
+              env=None,
+              ports=None,
+              volumes=None,
+              workdir=None,
+              author=None,
+              created_by=None,
+              creation_time=None):
     """Constructor."""
     return super(Overrides, cls).__new__(
-        cls, layers=layers, entrypoint=entrypoint, cmd=cmd, user=user,
-        labels=labels, env=env, ports=ports, volumes=volumes, workdir=workdir,
-        author=author, created_by=created_by)
+        cls,
+        layers=layers,
+        entrypoint=entrypoint,
+        cmd=cmd,
+        user=user,
+        labels=labels,
+        env=env,
+        ports=ports,
+        volumes=volumes,
+        workdir=workdir,
+        author=author,
+        created_by=created_by,
+        creation_time=creation_time)
 
 
 # NOT THREADSAFE
@@ -113,7 +126,7 @@ def Override(
 
   # dont propagate non-spec keys
   output = dict()
-  output['created'] = '0001-01-01T00:00:00Z'
+  output['created'] = options.creation_time or _DEFAULT_TIMESTAMP
   output['author'] = options.author or 'Unknown'
   output['architecture'] = architecture
   output['os'] = operating_system
@@ -179,9 +192,10 @@ def Override(
   history = defaults.get('history', [])
   # docker only allows the child to have one more history entry than the parent
   history += [{
-      'created': '0001-01-01T00:00:00Z',
+      'created': options.creation_time or _DEFAULT_TIMESTAMP,
       'created_by': options.created_by or 'Unknown',
-      'author': options.author or 'Unknown'}]
+      'author': options.author or 'Unknown'
+  }]
   output['history'] = history
 
   return output

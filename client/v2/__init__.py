@@ -28,6 +28,10 @@ from containerregistry.client.v2 import util_
 setattr(x, 'util', util_)
 
 
+from containerregistry.client.v2 import docker_digest_
+setattr(x, 'docker_digest', docker_digest_)
+
+
 from containerregistry.client.v2 import docker_image_
 setattr(x, 'docker_image', docker_image_)
 

@@ -19,7 +19,6 @@
 import abc
 import cStringIO
 import gzip
-import hashlib
 import httplib
 import json
 import os
@@ -28,8 +27,8 @@ import threading
 
 from containerregistry.client import docker_creds
 from containerregistry.client import docker_name
+from containerregistry.client.v2_2 import docker_digest
 from containerregistry.client.v2_2 import docker_http
-from containerregistry.client.v2_2 import util
 import httplib2
 
 
@@ -57,7 +56,7 @@ class DockerImage(object):
 
   def digest(self):
     """The digest of the manifest."""
-    return util.Digest(self.manifest())
+    return docker_digest.SHA256(self.manifest())
 
   def media_type(self):
     """The media type of the manifest."""
@@ -255,7 +254,7 @@ class FromRegistry(DockerImage):
     else:
       assert isinstance(self._name, docker_name.Digest)
       c = self._content('manifests/' + self._name.digest, self._accepted_mimes)
-      computed = util.Digest(c)
+      computed = docker_digest.SHA256(c)
       if validate and computed != self._name.digest:
         raise DigestMismatchedError(
             'The returned manifest\'s digest did not match requested digest, '
@@ -289,7 +288,7 @@ class FromRegistry(DockerImage):
     """Override."""
     # GET server1/v2/<name>/blobs/<digest>
     c = self._content('blobs/' + digest, cache=False)
-    computed = 'sha256:' + hashlib.sha256(c).hexdigest()
+    computed = docker_digest.SHA256(c)
     if digest != computed:
       raise DigestMismatchedError(
           'The returned content\'s digest did not match its content-address, '
@@ -405,7 +404,7 @@ class FromTarball(DockerImage):
   def _populate_manifest_and_blobs(self):
     """Populates self._manifest and self._blob_names."""
     # TODO(user): Update mimes here for oci_compat.
-    config_blob = 'sha256:' + hashlib.sha256(self.config_file()).hexdigest()
+    config_blob = docker_digest.SHA256(self.config_file())
     manifest = {
         'mediaType': docker_http.MANIFEST_SCHEMA2_MIME,
         'schemaVersion': 2,
@@ -422,7 +421,7 @@ class FromTarball(DockerImage):
     blob_names = {}
     for layer in self._layers:
       content = self._gzipped_content(layer)
-      name = 'sha256:' + hashlib.sha256(content).hexdigest()
+      name = docker_digest.SHA256(content)
       blob_names[name] = layer
       manifest['layers'].append({
           'digest': name,
@@ -608,7 +607,7 @@ class FromDisk(DockerImage):
         'config': {
             'mediaType': docker_http.CONFIG_JSON_MIME,
             'size': len(self.config_file()),
-            'digest': 'sha256:' + hashlib.sha256(self.config_file()).hexdigest()
+            'digest': docker_digest.SHA256(self.config_file())
         },
         'layers': base_layers + [
             {

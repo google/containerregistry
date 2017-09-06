@@ -57,15 +57,15 @@ class Diagnostic(object):
 
   @property
   def code(self):
-    return self._error.get('code')
+    return self._error.get('code', 'UNKNOWN')
 
   @property
   def message(self):
-    return self._error.get('message')
+    return self._error.get('message', '<no message specified>')
 
   @property
   def detail(self):
-    return self._error.get('detail')
+    return self._error.get('detail', '<no details provided>')
 
 
 def _DiagnosticsFromContent(content):
