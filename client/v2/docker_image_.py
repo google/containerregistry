@@ -27,8 +27,8 @@ import tarfile
 
 from containerregistry.client import docker_creds
 from containerregistry.client import docker_name
+from containerregistry.client.v2 import docker_digest
 from containerregistry.client.v2 import docker_http
-from containerregistry.client.v2 import util
 import httplib2
 
 
@@ -52,7 +52,7 @@ class DockerImage(object):
 
   def digest(self):
     """The digest of the manifest."""
-    return util.Digest(self.manifest())
+    return docker_digest.SignedManifestToSHA256(self.manifest())
 
   # pytype: disable=bad-return-type
   @abc.abstractmethod
@@ -174,7 +174,7 @@ class FromRegistry(DockerImage):
       assert isinstance(self._name, docker_name.Digest)
       c = self._content('manifests/' + self._name.digest)
       # v2 removes signatures to compute the manifest digest, this is hard.
-      computed = util.Digest(c)
+      computed = docker_digest.SignedManifestToSHA256(c)
       if validate and computed != self._name.digest:
         raise DigestMismatchedError(
             'The returned manifest\'s digest did not match requested digest, '

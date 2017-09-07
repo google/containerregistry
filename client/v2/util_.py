@@ -17,7 +17,6 @@
 
 
 import base64
-import hashlib
 import json
 import os
 import subprocess
@@ -129,12 +128,6 @@ def _AttachSignatures(
   return '{prefix},"signatures":{signatures}{suffix}'.format(
       prefix=prefix, signatures=json.dumps(signatures, sort_keys=True),
       suffix=suffix)
-
-
-def Digest(manifest):
-  """Compute the digest of the signed manifest."""
-  unsigned_manifest, unused_signatures = DetachSignatures(manifest)
-  return 'sha256:' + hashlib.sha256(unsigned_manifest).hexdigest()
 
 
 def Rename(manifest, name):

@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""This package holds a handful of utilities for manipulating manifests."""
+"""This package holds a handful of utilities for calculating digests."""
 
 
 
@@ -20,10 +20,6 @@ import hashlib
 
 
 
-class BadManifestException(Exception):
-  """Exception type raised when a malformed manifest is encountered."""
-
-
-def Digest(manifest):
-  """Compute the digest of the manifest."""
-  return 'sha256:' + hashlib.sha256(manifest).hexdigest()
+def SHA256(content):
+  """Return 'sha256:' + hex(sha256(content))."""
+  return 'sha256:' + hashlib.sha256(content).hexdigest()

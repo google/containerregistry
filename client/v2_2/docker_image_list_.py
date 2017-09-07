@@ -22,9 +22,9 @@ import json
 
 from containerregistry.client import docker_creds
 from containerregistry.client import docker_name
+from containerregistry.client.v2_2 import docker_digest
 from containerregistry.client.v2_2 import docker_http
 from containerregistry.client.v2_2 import docker_image as v2_2_image
-from containerregistry.client.v2_2 import util
 import httplib2
 
 
@@ -106,7 +106,7 @@ class DockerImageList(object):
 
   def digest(self):
     """The digest of the manifest."""
-    return util.Digest(self.manifest())
+    return docker_digest.SHA256(self.manifest())
 
   def media_type(self):
     """The media type of the manifest."""
@@ -273,7 +273,7 @@ class FromRegistry(DockerImageList):
     else:
       assert isinstance(self._name, docker_name.Digest)
       c = self._content('manifests/' + self._name.digest, self._accepted_mimes)
-      computed = util.Digest(c)
+      computed = docker_digest.SHA256(c)
       if validate and computed != self._name.digest:
         raise DigestMismatchedError(
             'The returned manifest\'s digest did not match requested digest, '
