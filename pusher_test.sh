@@ -49,11 +49,12 @@ function test_sanity() {
 # Test pushing an image by just invoking the pusher
 function test_pusher() {
   local image=$1
+  shift 1
   local random_image="direct.$RANDOM.tar"
   generate_image "${random_image}"
 
   # Test it in our current environment.
-  pusher.par --name="${image}" --tarball="${random_image}"
+  pusher.par --name="${image}" --tarball="${random_image}" "$@"
 }
 
 # Test pushing an image from inside a docker container with a
@@ -82,12 +83,13 @@ EOF
 
 function test_image() {
   local image=$1
+  shift 1
 
   echo "TESTING: ${image}"
 
   test_sanity "${image}"
 
-  test_pusher "${image}"
+  test_pusher "${image}" "$@"
 
   # TODO(user): Test inside of docker images.
   # test_base "${image}" python2.7 python:2.7
@@ -105,9 +107,8 @@ test_image index.docker.io/googlecontainerregistrytesting/pusher-testing:latest
 # Test pushing to Bintray.io
 test_image googlecontainerregistrytesting-docker-test-repo.bintray.io/testing/pusher-testing:latest
 
-# TODO(user): Enable once Quay supports v2.2
-# # Test pushing to Quay.io
-# test_image quay.io/googlecontainerregistrytesting/pusher-testing:latest
+# Test pushing to Quay.io via OCI
+test_image quay.io/googlecontainerregistrytesting/pusher-testing:latest --oci
 
 # TODO(user): Enable once SNI issues are resolved.
 # # Test pushing to Gitlab
