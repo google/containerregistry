@@ -152,10 +152,10 @@ def Override(
 
   # TODO(user) Label is currently docker specific
   if options.labels:
-    label_dict = _KeyValueToDict(output['config'].get('Label', []))
+    label_dict = output['config'].get('Labels', {})
     for k, v in options.labels.iteritems():
       label_dict[k] = v
-    output['config']['Label'] = _DictToKeyValue(label_dict)
+    output['config']['Labels'] = label_dict
 
   if options.ports:
     if 'ExposedPorts' not in output['config']:

@@ -1,0 +1,23 @@
+steps:
+# Build the flatten PAR file
+- name: gcr.io/cloud-builders/bazel
+  args: [
+    # TODO(user): Remove once this is released:
+    # https://github.com/GoogleCloudPlatform/cloud-builders/pull/29
+    '--output_base', '/workspace',
+    'build', '//:flatten.par',
+    # TODO(user): Remove once PAR compilation runs properly inside
+    # the Bazel sandbox on cloudbuild.
+    '--strategy', 'PythonCompile=standalone'
+  ]
+
+# Upload the flatten PAR file to a public GCS bucket
+- name: gcr.io/cloud-builders/gsutil
+  args: [
+    'cp',
+    'bazel-bin/flatten.par',
+    'gs://containerregistry-releases/$TAG_NAME/flatten.par'
+  ]
+
+# We produce no Docker images.
+images: []

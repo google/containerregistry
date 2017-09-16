@@ -36,6 +36,10 @@ from containerregistry.tools import fast_puller_
 setattr(x, 'fast_puller', fast_puller_)
 
 
+from containerregistry.tools import fast_flatten_
+setattr(x, 'fast_flatten', fast_flatten_)
+
+
 from containerregistry.tools import fast_importer_
 setattr(x, 'fast_importer', fast_importer_)
 

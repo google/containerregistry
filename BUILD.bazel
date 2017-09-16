@@ -48,6 +48,14 @@ par_binary(
 )
 
 par_binary(
+    name = "flatten",
+    srcs = ["tools/fast_flatten_.py"],
+    main = "tools/fast_flatten_.py",
+    visibility = ["//visibility:public"],
+    deps = [":containerregistry"],
+)
+
+par_binary(
     name = "importer",
     srcs = ["tools/fast_importer_.py"],
     main = "tools/fast_importer_.py",
