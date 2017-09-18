@@ -13,6 +13,8 @@
 # limitations under the License.
 package(default_visibility = ["//visibility:public"])
 
+load("@pip_containerregistry//:requirements.bzl", "package")
+
 py_library(
     name = "containerregistry",
     srcs = glob([
@@ -23,9 +25,9 @@ py_library(
         "transport/**/*.py",
     ]),
     deps = [
-        "@concurrent//:concurrent",
-        "@httplib2//:httplib2",
-        "@oauth2client//:oauth2client",
+        package("futures"),
+        package("httplib2"),
+        package("oauth2client"),
     ],
 )
 
