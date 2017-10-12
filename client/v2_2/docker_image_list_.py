@@ -96,7 +96,7 @@ class Platform(object):
     return target.can_run(self)
 
   def __iter__(self):
-    return iter(self._content)
+    return iter(self._content.iteritems())
 
 
 class DockerImageList(object):
@@ -242,17 +242,31 @@ class FromRegistry(DockerImageList):
 
   def resolve_all(
       self, target=None):
+    results = self.resolve_all_helper(target)
+    results.sort(key=lambda (name, image): str(name))
+    return [image for (_, image) in results]
+
+  def resolve_all_helper(
+      self, target = None
+  ):
+    """Resolves a manifest list to a list of (digest, image) tuples.
+
+    Args:
+      target: the platform to check for compatibility. If omitted, the target
+          platform defaults to linux/amd64.
+
+    Returns:
+      A list of (digest, image) tuples that can be run on the target platform.
+    """
     results = []
     images = self.images()
-    # Sort by name for deterministic output.
-    images.sort(key=lambda (name, platform, image): str(name))
-    for _, platform, image in images:
+    for name, platform, image in images:
       # Recurse on manifest lists.
-      if isinstance(image, DockerImageList):
+      if isinstance(image, FromRegistry):
         with image:
-          results.extend(image.resolve_all(target))
+          results.extend(image.resolve_all_helper(target))
       elif target.can_run(platform):
-        results.append(image)
+        results.append((name, image))
     return results
 
   def exists(self):
@@ -339,8 +353,13 @@ class FromList(DockerImageList):
     """
     results = []
     for (platform, image) in self._images:
-      if target.can_run(platform):
+      if isinstance(image, DockerImageList):
+        with image:
+          results.extend(image.resolve_all(target))
+      elif target.can_run(platform):
         results.append(image)
+    # Sort by digest for deterministic output.
+    results.sort(key=lambda (image): image.digest())
     return results
 
   # __enter__ and __exit__ allow use as a context manager.
