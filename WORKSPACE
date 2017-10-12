@@ -13,28 +13,76 @@
 # limitations under the License.
 workspace(name = "containerregistry")
 
-git_repository(
-    name = "io_bazel_rules_python",
-    commit = "d6fbb0fb2a5c8e318dd4de5104dc41358cefaa90",
-    remote = "https://github.com/bazelbuild/rules_python.git",
+new_http_archive(
+    name = "httplib2",
+    url = "https://codeload.github.com/httplib2/httplib2/tar.gz/v0.10.3",
+    sha256 = "d1bee28a68cc665c451c83d315e3afdbeb5391f08971dcc91e060d5ba16986f1",
+    strip_prefix = "httplib2-0.10.3/python2/httplib2/",
+    type = "tar.gz",
+    build_file_content = """
+py_library(
+   name = "httplib2",
+   srcs = glob(["**/*.py"]),
+   data = ["cacerts.txt"],
+   visibility = ["//visibility:public"]
+)""",
 )
 
-load(
-    "@io_bazel_rules_python//python:pip.bzl",
-    "pip_import",
-    "pip_repositories",
+# Used by oauth2client
+new_http_archive(
+    name = "six",
+    url = "https://pypi.python.org/packages/source/s/six/six-1.9.0.tar.gz",
+    sha256 = "e24052411fc4fbd1f672635537c3fc2330d9481b18c0317695b46259512c91d5",
+    strip_prefix = "six-1.9.0/",
+    type = "tar.gz",
+    build_file_content = """
+# Rename six.py to __init__.py
+genrule(
+    name = "rename",
+    srcs = ["six.py"],
+    outs = ["__init__.py"],
+    cmd = "cat $< >$@",
+)
+py_library(
+   name = "six",
+   srcs = [":__init__.py"],
+   visibility = ["//visibility:public"],
+)"""
 )
 
-pip_repositories()
-
-pip_import(
-    name = "pip_containerregistry",
-    requirements = "//:requirements.txt",
+# Used for authentication in containerregistry
+new_http_archive(
+    name = "oauth2client",
+    url = "https://codeload.github.com/google/oauth2client/tar.gz/v4.0.0",
+    sha256 = "7230f52f7f1d4566a3f9c3aeb5ffe2ed80302843ce5605853bee1f08098ede46",
+    strip_prefix = "oauth2client-4.0.0/oauth2client/",
+    type = "tar.gz",
+    build_file_content = """
+py_library(
+   name = "oauth2client",
+   srcs = glob(["**/*.py"]),
+   visibility = ["//visibility:public"],
+   deps = [
+     "@httplib2//:httplib2",
+     "@six//:six",
+   ]
+)"""
 )
 
-load("@pip_containerregistry//:requirements.bzl", "pip_install")
-
-pip_install()
+# Used for parallel execution in containerregistry
+new_http_archive(
+    name = "concurrent",
+    url = "https://codeload.github.com/agronholm/pythonfutures/tar.gz/3.0.5",
+    sha256 = "a7086ddf3c36203da7816f7e903ce43d042831f41a9705bc6b4206c574fcb765",
+    strip_prefix = "pythonfutures-3.0.5/concurrent/",
+    type = "tar.gz",
+    build_file_content = """
+py_library(
+   name = "concurrent",
+   srcs = glob(["**/*.py"]),
+   visibility = ["//visibility:public"]
+)"""
+)
 
 # For packaging python tools.
 git_repository(
