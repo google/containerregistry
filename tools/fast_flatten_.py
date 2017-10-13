@@ -16,9 +16,11 @@
 
 
 import argparse
+import logging
 import tarfile
 
 from containerregistry.client.v2_2 import docker_image as v2_2_image
+from containerregistry.tools import logging_setup
 
 parser = argparse.ArgumentParser(description='Flatten container images.')
 
@@ -47,7 +49,9 @@ _THREADS = 8
 
 
 def main():
+  logging_setup.DefineCommandLineArgs(parser)
   args = parser.parse_args()
+  logging_setup.Init(args=args)
 
   if not args.config and (args.layer or args.digest):
     raise Exception(
@@ -63,9 +67,11 @@ def main():
   # If config is specified, use that.  Otherwise, fall back on reading
   # the config from the tarball.
   if args.config:
+    logging.info('Reading config from %r', args.config)
     with open(args.config, 'r') as reader:
       config = reader.read()
   elif args.tarball:
+    logging.info('Reading config from tarball %r', args.tarball)
     with v2_2_image.FromTarball(args.tarball) as base:
       config = base.config_file()
   else:
@@ -74,6 +80,7 @@ def main():
   if len(args.digest or []) != len(args.layer or []):
     raise Exception('--digest and --layer must have matching lengths.')
 
+  logging.info('Loading v2.2 image from disk ...')
   with v2_2_image.FromDisk(config, zip(args.digest or [], args.layer or []),
                            legacy_base=args.tarball) as v2_2_img:
     with tarfile.open(args.filesystem, 'w') as tar:

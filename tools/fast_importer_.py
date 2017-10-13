@@ -19,9 +19,11 @@ Unlike 'docker save' the format this uses is proprietary.
 
 
 import argparse
+import logging
 
 from containerregistry.client.v2_2 import docker_image as v2_2_image
 from containerregistry.client.v2_2 import save
+from containerregistry.tools import logging_setup
 from containerregistry.tools import patched
 
 parser = argparse.ArgumentParser(
@@ -38,11 +40,14 @@ _THREADS = 8
 
 
 def main():
+  logging_setup.DefineCommandLineArgs(parser)
   args = parser.parse_args()
+  logging_setup.Init(args=args)
 
   if not args.tarball or not args.directory:
     raise Exception('--tarball and --directory are required arguments.')
 
+  logging.info('Reading v2.2 image from tarball %r', args.tarball)
   with v2_2_image.FromTarball(args.tarball) as v2_2_img:
     save.fast(v2_2_img, args.directory, threads=_THREADS)
 

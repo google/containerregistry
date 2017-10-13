@@ -19,6 +19,7 @@ Unlike docker_puller the format this uses is proprietary.
 
 
 import argparse
+import logging
 
 from containerregistry.client import docker_creds
 from containerregistry.client import docker_name
@@ -27,6 +28,7 @@ from containerregistry.client.v2_2 import docker_http
 from containerregistry.client.v2_2 import docker_image as v2_2_image
 from containerregistry.client.v2_2 import save
 from containerregistry.client.v2_2 import v2_compat
+from containerregistry.tools import logging_setup
 from containerregistry.tools import patched
 from containerregistry.transport import transport_pool
 
@@ -47,7 +49,9 @@ _THREADS = 8
 
 
 def main():
+  logging_setup.DefineCommandLineArgs(parser)
   args = parser.parse_args()
+  logging_setup.Init(args=args)
 
   if not args.name or not args.directory:
     raise Exception('--name and --directory are required arguments.')
@@ -72,11 +76,13 @@ def main():
   # client logic.
   creds = docker_creds.DefaultKeychain.Resolve(name)
 
+  logging.info('Pulling v2.2 image from %r ...', name)
   with v2_2_image.FromRegistry(name, creds, transport, accept) as v2_2_img:
     if v2_2_img.exists():
       save.fast(v2_2_img, args.directory, threads=_THREADS)
       return
 
+  logging.info('Pulling v2 image from %r ...', name)
   with v2_image.FromRegistry(name, creds, transport) as v2_img:
     with v2_compat.V22FromV2(v2_img) as v2_2_img:
       save.fast(v2_2_img, args.directory, threads=_THREADS)

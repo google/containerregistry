@@ -19,6 +19,7 @@
 import abc
 import base64
 import json
+import logging
 import os
 import subprocess
 
@@ -146,8 +147,9 @@ class Helper(Basic):
     #   echo -n {self._registry} | docker-credential-{self._name} get
     # The resulting JSON blob will have 'Username' and 'Secret' fields.
 
-    p = subprocess.Popen(['docker-credential-{name}'.format(name=self._name),
-                          'get'],
+    bin_name = 'docker-credential-{name}'.format(name=self._name)
+    logging.info('Invoking %r to obtain Docker credentials.', bin_name)
+    p = subprocess.Popen([bin_name, 'get'],
                          stdout=subprocess.PIPE,
                          stdin=subprocess.PIPE,
                          stderr=subprocess.STDOUT)
@@ -158,6 +160,7 @@ class Helper(Basic):
     output = stdout.decode()
     if output.strip() == _MAGIC_NOT_FOUND_MESSAGE:
       # Use empty auth when no auth is found.
+      logging.info('Credentials not found, falling back to anonymous auth.')
       return Anonymous().Get()
 
     if p.returncode != 0:
@@ -165,6 +168,7 @@ class Helper(Basic):
                       % (self._name, p.returncode, stdout))
 
     blob = json.loads(output)
+    logging.info('Successfully obtained Docker credentials.')
     return Basic(blob['Username'], blob['Secret']).Get()
 
 
@@ -221,6 +225,7 @@ class _DefaultKeychain(Keychain):
   def Resolve(self, name):
     # TODO(user): Consider supporting .dockercfg, which was used prior
     # to Docker 1.7 and consisted of just the contents of 'auths' below.
+    logging.info('Loading Docker credentials for repository %r', str(name))
     config_file = os.path.join(_GetConfigDirectory(), 'config.json')
     try:
       with open(config_file, 'r') as reader:

@@ -16,6 +16,7 @@
 
 
 import argparse
+import logging
 import tarfile
 
 from containerregistry.client import docker_creds
@@ -25,6 +26,7 @@ from containerregistry.client.v2_2 import docker_http
 from containerregistry.client.v2_2 import docker_image as v2_2_image
 from containerregistry.client.v2_2 import save
 from containerregistry.client.v2_2 import v2_compat
+from containerregistry.tools import logging_setup
 from containerregistry.tools import patched
 from containerregistry.transport import transport_pool
 
@@ -65,7 +67,9 @@ def _make_tag_if_digest(
 
 
 def main():
+  logging_setup.DefineCommandLineArgs(parser)
   args = parser.parse_args()
+  logging_setup.Init(args=args)
 
   if not args.name or not args.tarball:
     raise Exception('--name and --tarball are required arguments.')
@@ -91,11 +95,13 @@ def main():
   creds = docker_creds.DefaultKeychain.Resolve(name)
 
   with tarfile.open(name=args.tarball, mode='w') as tar:
+    logging.info('Pulling v2.2 image from %r ...', name)
     with v2_2_image.FromRegistry(name, creds, transport, accept) as v2_2_img:
       if v2_2_img.exists():
         save.tarball(_make_tag_if_digest(name), v2_2_img, tar)
         return
 
+    logging.info('Pulling v2 image from %r ...', name)
     with v2_image.FromRegistry(name, creds, transport) as v2_img:
       with v2_compat.V22FromV2(v2_img) as v2_2_img:
         save.tarball(_make_tag_if_digest(name), v2_2_img, tar)
