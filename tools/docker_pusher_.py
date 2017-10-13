@@ -16,12 +16,14 @@
 
 
 import argparse
+import logging
 
 from containerregistry.client import docker_creds
 from containerregistry.client import docker_name
 from containerregistry.client.v2_2 import docker_image as v2_2_image
 from containerregistry.client.v2_2 import docker_session
 from containerregistry.client.v2_2 import oci_compat
+from containerregistry.tools import logging_setup
 from containerregistry.tools import patched
 from containerregistry.transport import transport_pool
 
@@ -66,7 +68,9 @@ def Tag(name, files):
 
 
 def main():
+  logging_setup.DefineCommandLineArgs(parser)
   args = parser.parse_args()
+  logging_setup.Init(args=args)
 
   if not args.name or not args.tarball:
     raise Exception('--name and --tarball are required arguments.')
@@ -83,12 +87,19 @@ def main():
   creds = docker_creds.DefaultKeychain.Resolve(name)
 
   with docker_session.Push(name, creds, transport, threads=_THREADS) as session:
+    logging.info('Reading v2.2 image from tarball %r', args.tarball)
     with v2_2_image.FromTarball(args.tarball) as v2_2_img:
+      logging.info('Starting upload ...')
       if args.oci:
         with oci_compat.OCIFromV22(v2_2_img) as oci_img:
           session.upload(oci_img)
+          digest = oci_img.digest()
       else:
         session.upload(v2_2_img)
+        digest = v2_2_img.digest()
+
+      print('{name} was published with digest: {digest}'.format(
+          name=name, digest=digest))
 
 
 if __name__ == '__main__':

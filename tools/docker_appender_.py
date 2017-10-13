@@ -16,12 +16,14 @@
 
 
 import argparse
+import logging
 
 from containerregistry.client import docker_creds
 from containerregistry.client import docker_name
 from containerregistry.client.v2_2 import append
 from containerregistry.client.v2_2 import docker_image as v2_2_image
 from containerregistry.client.v2_2 import docker_session
+from containerregistry.tools import logging_setup
 from containerregistry.tools import patched
 from containerregistry.transport import transport_pool
 
@@ -44,7 +46,9 @@ _THREADS = 8
 
 
 def main():
+  logging_setup.DefineCommandLineArgs(parser)
   args = parser.parse_args()
+  logging_setup.Init(args=args)
 
   if not args.src_image or not args.tarball or not args.dst_image:
     raise Exception('--src-image, --dst-image and --tarball are required '
@@ -61,13 +65,19 @@ def main():
   # Resolve the appropriate credential to use based on the standard Docker
   # client logic.
   creds = docker_creds.DefaultKeychain.Resolve(src)
+  logging.info('Pulling v2.2 image from %r ...', src)
   with v2_2_image.FromRegistry(src, creds, transport) as src_image:
     with open(args.tarball, 'rb') as f:
       new_img = append.Layer(src_image, f.read())
 
   creds = docker_creds.DefaultKeychain.Resolve(dst)
   with docker_session.Push(dst, creds, transport, threads=_THREADS) as session:
+    logging.info('Starting upload ...')
     session.upload(new_img)
+    digest = new_img.digest()
+
+    print('{name} was published with digest: {digest}'.format(
+        name=dst, digest=digest))
 
 
 if __name__ == '__main__':

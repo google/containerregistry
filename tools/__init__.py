@@ -20,6 +20,10 @@ from containerregistry.tools import patched_
 setattr(x, 'patched', patched_)
 
 
+from containerregistry.tools import logging_setup_
+setattr(x, 'logging_setup', logging_setup_)
+
+
 from containerregistry.tools import docker_appender_
 setattr(x, 'docker_appender', docker_appender_)
 
