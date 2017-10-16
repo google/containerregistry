@@ -96,6 +96,10 @@ class Platform(object):
     return target.can_run(self)
 
   def __iter__(self):
+    # Ensure architecture and os are set (for default platform).
+    self._content['architecture'] = self.architecture()
+    self._content['os'] = self.os()
+
     return iter(self._content.iteritems())
 
 
