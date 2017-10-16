@@ -22,6 +22,7 @@ import json
 from containerregistry.client import docker_name
 from containerregistry.client.v2_2 import docker_http
 from containerregistry.client.v2_2 import docker_image
+from containerregistry.transform.v2_2 import metadata
 
 # _EMPTY_LAYER_TAR_ID is the sha256 of an empty tarball.
 _EMPTY_LAYER_TAR_ID = (
@@ -40,7 +41,8 @@ class Layer(docker_image.DockerImage):
       self,
       base,
       tar_gz,
-      diff_id=None):
+      diff_id = None,
+      overrides = None):
     """Creates a new layer on top of a base with optional tar.gz.
 
     Args:
@@ -49,6 +51,8 @@ class Layer(docker_image.DockerImage):
           changeset.
       diff_id: an optional string containing the digest of the
           uncompressed tar_gz.
+      overrides: an optional metadata.Overrides object of properties to override
+          on the base image.
     """
     self._base = base
     manifest = json.loads(self._base.manifest())
@@ -76,6 +80,8 @@ class Layer(docker_image.DockerImage):
       cfg['empty_layer'] = 'true'
 
     config_file['history'].insert(0, cfg)
+    if overrides:
+      config_file = metadata.Override(config_file, overrides)
 
     self._config_file = json.dumps(config_file, sort_keys=True)
     manifest['config']['digest'] = (
