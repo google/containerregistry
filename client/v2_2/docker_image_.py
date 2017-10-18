@@ -46,6 +46,11 @@ class DockerImage(object):
     manifest = json.loads(self.manifest())
     return [x['digest'] for x in reversed(manifest['layers'])]
 
+  def diff_ids(self):
+    """The ordered list of uncompressed layer hashes (matches fs_layers)."""
+    cfg = json.loads(self.config_file())
+    return list(reversed(cfg.get('rootfs', {}).get('diff_ids', [])))
+
   def config_blob(self):
     manifest = json.loads(self.manifest())
     return manifest['config']['digest']
@@ -105,6 +110,29 @@ class DockerImage(object):
     unzipped = f.read()
     return unzipped
 
+  def _diff_id_to_digest(self, diff_id):
+    for (this_digest, this_diff_id) in zip(self.fs_layers(), self.diff_ids()):
+      if this_diff_id == diff_id:
+        return this_digest
+    raise ValueError('Unmatched "diff_id": "%s"' % diff_id)
+
+  def layer(self, diff_id):
+    """Like `blob()`, but accepts the `diff_id` instead.
+
+    The `diff_id` is the name for the digest of the uncompressed layer.
+
+    Args:
+      diff_id: the 'algo:digest' of the layer being addressed.
+
+    Returns:
+      The raw compressed blob string of the layer.
+    """
+    return self.blob(self._diff_id_to_digest(diff_id))
+
+  def uncompressed_layer(self, diff_id):
+    """Same as layer() but uncompressed."""
+    return self.uncompressed_blob(self._diff_id_to_digest(diff_id))
+
   # __enter__ and __exit__ allow use as a context manager.
   @abc.abstractmethod
   def __enter__(self):
@@ -138,6 +166,10 @@ class Delegate(DockerImage):
     """Override."""
     return self._image.media_type()
 
+  def diff_ids(self):
+    """Override."""
+    return self._image.diff_ids()
+
   def fs_layers(self):
     """Override."""
     return self._image.fs_layers()
@@ -165,6 +197,14 @@ class Delegate(DockerImage):
   def uncompressed_blob(self, digest):
     """Override."""
     return self._image.uncompressed_blob(digest)
+
+  def layer(self, diff_id):
+    """Override."""
+    return self._image.layer(diff_id)
+
+  def uncompressed_layer(self, diff_id):
+    """Override."""
+    return self._image.uncompressed_layer(diff_id)
 
   def __str__(self):
     """Override."""
@@ -462,6 +502,14 @@ class FromTarball(DockerImage):
       return self.config_file()
     return self._gzipped_content(
         self._blob_names[digest])  # pytype: disable=none-attr
+
+  # Could be large, do not memoize
+  def uncompressed_layer(self, diff_id):
+    """Override."""
+    for (layer, this_diff_id) in zip(reversed(self._layers), self.diff_ids()):
+      if diff_id == this_diff_id:
+        return self._content(layer, memoize=False)
+    raise ValueError('Unmatched "diff_id": "%s"' % diff_id)
 
   def _resolve_tag(self):
     """Resolve the singleton tag this tarball contains using legacy methods."""

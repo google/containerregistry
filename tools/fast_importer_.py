@@ -49,7 +49,7 @@ def main():
 
   logging.info('Reading v2.2 image from tarball %r', args.tarball)
   with v2_2_image.FromTarball(args.tarball) as v2_2_img:
-    save.fast(v2_2_img, args.directory, threads=_THREADS)
+    save.uncompressed(v2_2_img, args.directory, threads=_THREADS)
 
 
 if __name__ == '__main__':

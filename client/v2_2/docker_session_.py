@@ -297,7 +297,7 @@ class Push(object):
       else:
         logging.info('Manifest exists, skipping upload.')
     elif isinstance(image, image_list.DockerImageList):
-      for _, _, child in image:
+      for _, child in image:
         # TODO(user): Refactor so that the threadpool is shared.
         with child:
           self.upload(child, use_digest=True)
