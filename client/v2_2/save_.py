@@ -121,7 +121,7 @@ def tarball(
 def fast(
     image,
     directory,
-    threads=1
+    threads = 1
 ):
   """Produce a FromDisk compatible file layout under the provided directory.
 
@@ -175,6 +175,76 @@ def fast(
 
       layer_name = os.path.join(directory, '%03d.tar.gz' % idx)
       f = executor.submit(write_file, layer_name, image.blob, blob)
+      future_to_params[f] = layer_name
+
+      layers.append((digest_name, layer_name))
+      idx += 1
+
+    # Wait for completion.
+    for future in concurrent.futures.as_completed(future_to_params):
+      future.result()
+
+  return (config_file, layers)
+
+
+def uncompressed(
+    image,
+    directory,
+    threads = 1
+):
+  """Produce a format similar to `fast()`, but with uncompressed blobs.
+
+  After calling this, the following filesystem will exist:
+    directory/
+      config.json  <-- only *.json, the image's config
+      001.tar      <-- the first layer's .tar filesystem delta
+      001.sha256   <-- the sha256 of 001.tar with a "sha256:" prefix.
+      ...
+      NNN.tar      <-- the NNNth layer's .tar filesystem delta
+      NNN.sha256   <-- the sha256 of NNN.tar with a "sha256:" prefix.
+
+  We pad layer indices to only 3 digits because of a known ceiling on the number
+  of filesystem layers Docker supports.
+
+  Args:
+    image: a docker image to save.
+    directory: an existing empty directory under which to save the layout.
+    threads: the number of threads to use when performing the upload.
+
+  Returns:
+    A tuple whose first element is the path to the config file, and whose second
+    element is an ordered list of tuples whose elements are the filenames
+    containing: (.sha256, .tar) respectively.
+  """
+
+  def write_file(
+      name,
+      accessor,
+      arg
+  ):
+    with open(name, 'wb') as f:
+      f.write(accessor(arg))
+
+  with concurrent.futures.ThreadPoolExecutor(max_workers=threads) as executor:
+    future_to_params = {}
+    config_file = os.path.join(directory, 'config.json')
+    f = executor.submit(write_file, config_file,
+                        lambda unused: image.config_file(), 'unused')
+    future_to_params[f] = config_file
+
+    idx = 0
+    layers = []
+    for diff_id in reversed(image.diff_ids()):
+      # Create a local copy
+      digest_name = os.path.join(directory, '%03d.sha256' % idx)
+      f = executor.submit(write_file, digest_name,
+                          # Strip the sha256: prefix
+                          lambda diff_id: diff_id[7:], diff_id)
+      future_to_params[f] = digest_name
+
+      layer_name = os.path.join(directory, '%03d.tar' % idx)
+      f = executor.submit(write_file, layer_name,
+                          image.uncompressed_layer, diff_id)
       future_to_params[f] = layer_name
 
       layers.append((digest_name, layer_name))
