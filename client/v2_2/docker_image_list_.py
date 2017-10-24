@@ -179,6 +179,44 @@ class DockerImageList(object):
     """Iterate over this manifest list's children."""
 
 
+class Delegate(DockerImageList):
+  """Forwards calls to the underlying image."""
+
+  def __init__(self, image):
+    """Constructor.
+
+    Args:
+      image: a DockerImageList on which __enter__ has already been called.
+    """
+    self._image = image
+
+  def manifest(self):
+    """Override."""
+    return self._image.manifest()
+
+  def media_type(self):
+    """Override."""
+    return self._image.media_type()
+
+  def resolve_all(
+      self, target = None):
+    """Override."""
+    return self._image.resolve_all(target)
+
+  def resolve(self,
+              target = None):
+    """Override."""
+    return self._image.resolve(target)
+
+  def __iter__(self):
+    """Override."""
+    return iter(self._image)
+
+  def __str__(self):
+    """Override."""
+    return str(self._image)
+
+
 class FromRegistry(DockerImageList):
   """This accesses a docker image list hosted on a registry (non-local)."""
 
@@ -233,8 +271,7 @@ class FromRegistry(DockerImageList):
       name = docker_name.Digest('{base}@{digest}'.format(
           base=self._name.as_repository(), digest=digest))
 
-      # TODO(user): Support Image Index.
-      if entry['mediaType'] == docker_http.MANIFEST_LIST_MIME:
+      if entry['mediaType'] in docker_http.MANIFEST_LIST_MIMES:
         image = FromRegistry(name, self._creds, self._original_transport)
       elif entry['mediaType'] == docker_http.MANIFEST_SCHEMA2_MIME:
         image = v2_2_image.FromRegistry(name, self._creds,
