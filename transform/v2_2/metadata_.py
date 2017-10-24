@@ -17,6 +17,7 @@
 
 from collections import namedtuple
 import copy
+import hashlib
 import os
 
 
@@ -28,23 +29,25 @@ _OverridesT = namedtuple('OverridesT', [
 # Unix epoch 0, representable in 32 bits.
 _DEFAULT_TIMESTAMP = '1970-01-01T00:00:00Z'
 
+_EMPTY_LAYER = hashlib.sha256('').hexdigest()
+
 
 class Overrides(_OverridesT):
   """Docker image configuration options."""
 
   def __new__(cls,
-              layers=None,
-              entrypoint=None,
-              cmd=None,
-              user=None,
-              labels=None,
-              env=None,
-              ports=None,
-              volumes=None,
-              workdir=None,
-              author=None,
-              created_by=None,
-              creation_time=None):
+              layers = None,
+              entrypoint = None,
+              cmd = None,
+              user = None,
+              labels = None,
+              env = None,
+              ports = None,
+              volumes = None,
+              workdir = None,
+              author = None,
+              created_by = None,
+              creation_time = None):
     """Constructor."""
     return super(Overrides, cls).__new__(
         cls,
@@ -60,6 +63,33 @@ class Overrides(_OverridesT):
         author=author,
         created_by=created_by,
         creation_time=creation_time)
+
+  def Override(self,
+               layers = None,
+               entrypoint = None,
+               cmd = None,
+               user = None,
+               labels = None,
+               env = None,
+               ports = None,
+               volumes = None,
+               workdir = None,
+               author = None,
+               created_by = None,
+               creation_time = None):
+    return Overrides(
+        layers=layers or self.layers,
+        entrypoint=entrypoint or self.entrypoint,
+        cmd=cmd or self.cmd,
+        user=user or self.user,
+        labels=labels or self.labels,
+        env=env or self.env,
+        ports=ports or self.ports,
+        volumes=volumes or self.volumes,
+        workdir=workdir or self.workdir,
+        author=author or self.author,
+        created_by=created_by or self.created_by,
+        creation_time=creation_time or self.creation_time)
 
 
 # NOT THREADSAFE
@@ -107,8 +137,8 @@ def _DictToKeyValue(
 def Override(
     data,
     options,
-    architecture='amd64',
-    operating_system='linux'
+    architecture = 'amd64',
+    operating_system = 'linux'
 ):
   """Create an image config possibly based on an existing one.
 
@@ -181,21 +211,29 @@ def Override(
 
   # diff_ids are ordered from bottom-most to top-most
   diff_ids = defaults.get('rootfs', {}).get('diff_ids', [])
-  layers = options.layers if options.layers else []
-  diff_ids += ['sha256:%s' % l for l in layers]
-  output['rootfs'] = {
-      'type': 'layers',
-      'diff_ids': diff_ids,
-  }
+  if options.layers:
+    layers = options.layers
+    diff_ids += [
+        'sha256:%s' % l
+        for l in layers
+        if l != _EMPTY_LAYER
+    ]
+    output['rootfs'] = {
+        'type': 'layers',
+        'diff_ids': diff_ids,
+    }
 
-  # history is ordered from bottom-most layer to top-most layer
-  history = defaults.get('history', [])
-  # docker only allows the child to have one more history entry than the parent
-  history += [{
-      'created': options.creation_time or _DEFAULT_TIMESTAMP,
-      'created_by': options.created_by or 'Unknown',
-      'author': options.author or 'Unknown'
-  }]
-  output['history'] = history
+    # The length of history is expected to match the length of diff_ids.
+    history = defaults.get('history', [])
+    for l in layers:
+      cfg = {
+          'created': options.creation_time or _DEFAULT_TIMESTAMP,
+          'created_by': options.created_by or 'Unknown',
+          'author': options.author or 'Unknown'
+      }
+      if l == _EMPTY_LAYER:
+        cfg['empty_layer'] = True
+      history.insert(0, cfg)
+    output['history'] = history
 
   return output

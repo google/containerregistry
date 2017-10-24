@@ -57,9 +57,9 @@ class Layer(docker_image.DockerImage):
     self._base = base
     manifest = json.loads(self._base.manifest())
     config_file = json.loads(self._base.config_file())
-    cfg = {
-        'created_by': docker_name.USER_AGENT,
-    }
+
+    overrides = overrides or metadata.Overrides()
+    overrides = overrides.Override(created_by=docker_name.USER_AGENT)
 
     if tar_gz:
       self._blob = tar_gz
@@ -73,15 +73,13 @@ class Layer(docker_image.DockerImage):
         diff_id = 'sha256:' + hashlib.sha256(
             self.uncompressed_blob(self._blob_sum)).hexdigest()
 
-      config_file['rootfs']['diff_ids'].append(diff_id)
+      # Takes naked hex.
+      overrides = overrides.Override(layers=[diff_id[len('sha256:'):]])
     else:
-      self._blob_sum = _EMPTY_LAYER_TAR_ID
-      self._blob = ''
-      cfg['empty_layer'] = 'true'
+      # The empty layer.
+      overrides = overrides.Override(layers=[hashlib.sha256('').hexdigest()])
 
-    config_file['history'].insert(0, cfg)
-    if overrides:
-      config_file = metadata.Override(config_file, overrides)
+    config_file = metadata.Override(config_file, overrides)
 
     self._config_file = json.dumps(config_file, sort_keys=True)
     manifest['config']['digest'] = (

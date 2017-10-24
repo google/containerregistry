@@ -443,7 +443,6 @@ class FromTarball(DockerImage):
 
   def _populate_manifest_and_blobs(self):
     """Populates self._manifest and self._blob_names."""
-    # TODO(user): Update mimes here for oci_compat.
     config_blob = docker_digest.SHA256(self.config_file())
     manifest = {
         'mediaType': docker_http.MANIFEST_SCHEMA2_MIME,
