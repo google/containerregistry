@@ -33,10 +33,14 @@ parser.add_argument('--tarball', action='store',
                     help=('The tarball containing the docker image to rewrite '
                           'into our fast on-disk format.'))
 
+parser.add_argument('--format', action='store', default='tar',
+                    choices=['tar', 'tar.gz'],
+                    help='The form in which to save layers.')
+
 parser.add_argument('--directory', action='store',
                     help='Where to save the image\'s files.')
 
-_THREADS = 8
+_THREADS = 32
 
 
 def main():
@@ -47,9 +51,13 @@ def main():
   if not args.tarball or not args.directory:
     raise Exception('--tarball and --directory are required arguments.')
 
+  method = save.uncompressed
+  if args.format == 'tar.gz':
+    method = save.fast
+
   logging.info('Reading v2.2 image from tarball %r', args.tarball)
   with v2_2_image.FromTarball(args.tarball) as v2_2_img:
-    save.uncompressed(v2_2_img, args.directory, threads=_THREADS)
+    method(v2_2_img, args.directory, threads=_THREADS)
 
 
 if __name__ == '__main__':

@@ -270,14 +270,15 @@ class FromRegistry(DockerImageList):
       digest = entry['digest']
       name = docker_name.Digest('{base}@{digest}'.format(
           base=self._name.as_repository(), digest=digest))
+      media_type = entry['mediaType']
 
-      if entry['mediaType'] in docker_http.MANIFEST_LIST_MIMES:
+      if media_type in docker_http.MANIFEST_LIST_MIMES:
         image = FromRegistry(name, self._creds, self._original_transport)
-      elif entry['mediaType'] == docker_http.MANIFEST_SCHEMA2_MIME:
+      elif media_type in docker_http.SUPPORTED_MANIFEST_MIMES:
         image = v2_2_image.FromRegistry(name, self._creds,
-                                        self._original_transport)
+                                        self._original_transport, [media_type])
       else:
-        raise InvalidMediaTypeError('Invalid media type: ' + entry['mediaType'])
+        raise InvalidMediaTypeError('Invalid media type: ' + media_type)
 
       platform = Platform(entry['platform']) if 'platform' in entry else None
       results.append((name, platform, image))
