@@ -73,7 +73,7 @@ def _check_element(
 
 
 def _check_repository(repository):
-  _check_element('repository', repository, _REPOSITORY_CHARS, 4, 255)
+  _check_element('repository', repository, _REPOSITORY_CHARS, 2, 255)
 
 
 def _check_tag(tag):

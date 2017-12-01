@@ -20,6 +20,8 @@ import copy
 import hashlib
 import os
 
+import six
+
 
 _OverridesT = namedtuple('OverridesT', [
     'layers', 'entrypoint', 'cmd', 'env', 'labels', 'ports', 'volumes',
@@ -29,7 +31,7 @@ _OverridesT = namedtuple('OverridesT', [
 # Unix epoch 0, representable in 32 bits.
 _DEFAULT_TIMESTAMP = '1970-01-01T00:00:00Z'
 
-_EMPTY_LAYER = hashlib.sha256('').hexdigest()
+_EMPTY_LAYER = hashlib.sha256(''.encode('utf-8')).hexdigest()
 
 
 class Overrides(_OverridesT):
@@ -113,7 +115,7 @@ def _DeepCopySkipNull(
   """Do a deep copy, skipping null entry."""
   if isinstance(data, dict):
     return dict((_DeepCopySkipNull(k), _DeepCopySkipNull(v))
-                for k, v in data.iteritems() if v is not None)
+                for k, v in six.iteritems(data) if v is not None)
   return copy.deepcopy(data)
 
 
