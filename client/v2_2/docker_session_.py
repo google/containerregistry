@@ -207,7 +207,7 @@ class Push(object):
     resp, unused_content = self._transport.Request(
         '{base_url}/manifests/{tag}'.format(
             base_url=self._base_url(),
-            tag=self._name.tag),
+            tag=self._name.tag),  # pytype: disable=attribute-error
         method='GET', accepted_codes=[httplib.OK, httplib.NOT_FOUND])
 
     if resp.status == httplib.NOT_FOUND:  # pytype: disable=attribute-error

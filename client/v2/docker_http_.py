@@ -396,7 +396,7 @@ def Scheme(endpoint):
   """Returns https scheme for all the endpoints except localhost."""
   if endpoint.startswith('localhost:'):
     return 'http'
-  elif re.match(r'.*\.local(?::\d{1,5})?$', endpoint):
+  elif re.match(r'.*\.local(?:host)?(?::\d{1,5})?$', endpoint):
     return 'http'
   else:
     return 'https'

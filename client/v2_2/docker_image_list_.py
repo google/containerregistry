@@ -268,8 +268,9 @@ class FromRegistry(DockerImageList):
     results = []
     for entry in manifests:
       digest = entry['digest']
+      base = self._name.as_repository()  # pytype: disable=attribute-error
       name = docker_name.Digest('{base}@{digest}'.format(
-          base=self._name.as_repository(), digest=digest))
+          base=base, digest=digest))
       media_type = entry['mediaType']
 
       if media_type in docker_http.MANIFEST_LIST_MIMES:
