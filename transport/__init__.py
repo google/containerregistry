@@ -16,6 +16,10 @@ import sys
 x=sys.modules['containerregistry.transport']
   
 
+from containerregistry.transport import retry_transport_
+setattr(x, 'retry_transport', retry_transport_)
+
+
 from containerregistry.transport import transport_pool_
 setattr(x, 'transport_pool', transport_pool_)
 
