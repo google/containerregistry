@@ -25,9 +25,8 @@ from containerregistry.client.v2_2 import docker_session
 from containerregistry.client.v2_2 import oci_compat
 from containerregistry.tools import logging_setup
 from containerregistry.tools import patched
+from containerregistry.transport import retry_transport
 from containerregistry.transport import transport_pool
-
-import httplib2
 
 
 parser = argparse.ArgumentParser(
@@ -75,7 +74,8 @@ def main():
   if not args.name or not args.tarball:
     raise Exception('--name and --tarball are required arguments.')
 
-  transport = transport_pool.Http(httplib2.Http, size=_THREADS)
+  retry_transport_factory = retry_transport.Factory()
+  transport = transport_pool.Http(retry_transport_factory.Build, size=_THREADS)
 
   # This library can support push-by-digest, but the likelihood of a user
   # correctly providing us with the digest without using this library
