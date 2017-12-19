@@ -72,11 +72,18 @@ class Push(object):
     self._mount = mount
     self._threads = threads
 
-  def _base_url(self):
-    return '{scheme}://{registry}/v2/{repository}'.format(
+  def _scheme_and_host(self):
+    return '{scheme}://{registry}'.format(
         scheme=docker_http.Scheme(self._name.registry),
-        registry=self._name.registry,
+        registry=self._name.registry)
+
+  def _base_url(self):
+    return self._scheme_and_host() + '/v2/{repository}'.format(
         repository=self._name.repository)
+
+  def _get_absolute_url(self, location):
+    # If 'location' is an absolute URL (includes host), this will be a no-op.
+    return urlparse.urljoin(base=self._scheme_and_host(), url=location)
 
   def _blob_exists(self, digest):
     """Check the remote for the given layer."""
@@ -161,12 +168,15 @@ class Push(object):
       logging.info('Layer %s mounted.', digest)
       return
 
+    location = self._get_absolute_url(location)
+
     resp, unused_content = self._transport.Request(
         location, method='PATCH', body=self._get_blob(image, digest),
         content_type='application/octet-stream',
         accepted_codes=[httplib.NO_CONTENT, httplib.ACCEPTED, httplib.CREATED])
 
     location = self._add_digest(resp['location'], digest)
+    location = self._get_absolute_url(location)
     self._transport.Request(
         location, method='PUT', body=None,
         accepted_codes=[httplib.CREATED])
