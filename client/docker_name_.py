@@ -18,6 +18,7 @@
 
 import os
 import sys
+import urlparse
 
 
 
@@ -84,12 +85,24 @@ def _check_digest(digest):
   _check_element('digest', digest, _DIGEST_CHARS, 7 + 64, 7 + 64)
 
 
+def _check_registry(registry):
+  # Per RFC 3986, netlocs (authorities) are required to be prefixed with '//'
+  parsed_hostname = urlparse.urlparse('//' + registry)
+
+  # If urlparse doesn't recognize the given registry as a netloc, fail
+  # validation.
+  if registry != parsed_hostname.netloc:
+    raise BadNameException('Invalid registry: %s' % (registry))
+
+
 class Registry(object):
   """Stores a docker registry name in a structured form."""
 
   def __init__(self, name, strict=True):
-    if strict and not name:
-      raise BadNameException('A Docker registry domain must be specified.')
+    if strict:
+      if not name:
+        raise BadNameException('A Docker registry domain must be specified.')
+      _check_registry(name)
 
     self._registry = name
 
@@ -276,3 +289,26 @@ class Digest(Repository):
 
   def __hash__(self):
     return hash((self.registry, self.repository, self.digest))
+
+
+def from_string(name):
+  """Parses the given name string.
+
+  Parsing is done strictly; registry is required and a Tag will only be returned
+  if specified explicitly in the given name string.
+  Args:
+    name: The name to convert.
+  Returns:
+    The parsed name.
+  Raises:
+    BadNameException: The name could not be parsed.
+  """
+  for name_type in [Digest, Tag, Repository, Registry]:
+    # Re-uses validation logic in the name classes themselves.
+    try:
+      return name_type(name, strict=True)
+    except BadNameException:
+      pass
+  raise BadNameException("'%s' is not a valid Tag, Digest, Repository or "
+                         "Registry" % (name))
+
