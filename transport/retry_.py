@@ -18,6 +18,8 @@
 import httplib
 import time
 
+from containerregistry.transport import nested
+
 import httplib2
 
 DEFAULT_SOURCE_TRANSPORT_CALLABLE = httplib2.Http
@@ -39,9 +41,10 @@ class Factory(object):
 
   def __init__(self):
     self.kwargs = {}
+    self.source_transport_callable = DEFAULT_SOURCE_TRANSPORT_CALLABLE
 
-  def WithSourceTransport(self, source_transport):
-    self.kwargs['source_transport'] = source_transport
+  def WithSourceTransportCallable(self, source_transport_callable):
+    self.source_transport_callable = source_transport_callable
     return self
 
   def WithMaxRetries(self, max_retries):
@@ -59,19 +62,19 @@ class Factory(object):
   def Build(self):
     """Returns a RetryTransport constructed with the given values.
     """
-    return RetryTransport(**self.kwargs)
+    return RetryTransport(self.source_transport_callable(), **self.kwargs)
 
 
-class RetryTransport(httplib2.Http):
+class RetryTransport(nested.NestedTransport):
   """A wrapper for the given transport which automatically retries errors.
   """
 
   def __init__(self,
-               source_transport = None,
+               source_transport,
                max_retries = DEFAULT_MAX_RETRIES,
                backoff_factor = DEFAULT_BACKOFF_FACTOR,
                should_retry_fn = _ShouldRetry):
-    self._transport = source_transport or DEFAULT_SOURCE_TRANSPORT_CALLABLE()
+    super(RetryTransport, self).__init__(source_transport)
     self._max_retries = max_retries
     self._backoff_factor = backoff_factor
     self._should_retry = should_retry_fn
@@ -91,7 +94,7 @@ class RetryTransport(httplib2.Http):
     retries = 0
     while True:
       try:
-        return self._transport.request(*args, **kwargs)
+        return self.source_transport.request(*args, **kwargs)
       except Exception as err:  # pylint: disable=broad-except
         if retries >= self._max_retries or not self._should_retry(err):
           raise
