@@ -35,7 +35,13 @@ parser.add_argument('--digest', action='append',
                     help='The list of layer digest filenames in order.')
 
 parser.add_argument('--layer', action='append',
-                    help='The list of layer filenames in order.')
+                    help='The list of compressed layer filenames in order.')
+
+parser.add_argument('--uncompressed_layer', action='append',
+                    help='The list of uncompressed layer filenames in order.')
+
+parser.add_argument('--diff_id', action='append',
+                    help='The list of diff_ids in order.')
 
 # Output arguments.
 parser.add_argument('--filesystem', action='store',
@@ -45,24 +51,11 @@ parser.add_argument('--metadata', action='store',
                     help=('The name of where to write the container '
                           'startup metadata.'))
 
-_THREADS = 8
-
 
 def main():
   logging_setup.DefineCommandLineArgs(parser)
   args = parser.parse_args()
   logging_setup.Init(args=args)
-
-  if not args.config and (args.layer or args.digest):
-    raise Exception(
-        'Using --layer or --digest requires --config to be specified.')
-
-  if not args.filesystem or not args.metadata:
-    raise Exception(
-        '--filesystem and --metadata are required flags.')
-
-  if not args.config and not args.tarball:
-    raise Exception('Either --config or --tarball must be specified.')
 
   # If config is specified, use that.  Otherwise, fall back on reading
   # the config from the tarball.
@@ -77,11 +70,12 @@ def main():
   else:
     config = args.config
 
-  if len(args.digest or []) != len(args.layer or []):
-    raise Exception('--digest and --layer must have matching lengths.')
-
-  logging.info('Loading v2.2 image from disk ...')
-  with v2_2_image.FromDisk(config, zip(args.digest or [], args.layer or []),
+  layers = zip(args.digest or [], args.layer or [])
+  uncompressed_layers = zip(args.diff_id or [], args.uncompressed_layer or [])
+  logging.info('Loading v2.2 image From Disk ...')
+  with v2_2_image.FromDisk(config_file=config,
+                           layers=layers,
+                           uncompressed_layers=uncompressed_layers,
                            legacy_base=args.tarball) as v2_2_img:
     with tarfile.open(args.filesystem, 'w') as tar:
       v2_2_image.extract(v2_2_img, tar)

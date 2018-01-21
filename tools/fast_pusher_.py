@@ -93,7 +93,7 @@ def main():
   logging_setup.Init(args=args)
 
   if not args.name:
-    raise Exception('--name is a required arguments.')
+    logging.fatal('--name is a required arguments.')
 
   # This library can support push-by-digest, but the likelihood of a user
   # correctly providing us with the digest without using this library
@@ -101,11 +101,11 @@ def main():
   name = Tag(args.name, args.stamp_info_file)
 
   if not args.config and (args.layer or args.digest):
-    raise Exception(
+    logging.fatal(
         'Using --layer or --digest requires --config to be specified.')
 
   if not args.config and not args.tarball:
-    raise Exception('Either --config or --tarball must be specified.')
+    logging.fatal('Either --config or --tarball must be specified.')
 
   # If config is specified, use that.  Otherwise, fallback on reading
   # the config from the tarball.
@@ -120,31 +120,40 @@ def main():
       config = base.config_file()
 
   if len(args.digest or []) != len(args.layer or []):
-    raise Exception('--digest and --layer must have matching lengths.')
+    logging.fatal('--digest and --layer must have matching lengths.')
 
   retry_factory = retry.Factory()
   retry_factory = retry_factory.WithSourceTransportCallable(httplib2.Http)
   transport = transport_pool.Http(retry_factory.Build, size=_THREADS)
 
-  # Resolve the appropriate credential to use based on the standard Docker
-  # client logic.
-  creds = docker_creds.DefaultKeychain.Resolve(name)
+  logging.info('Loading v2.2 image from disk ...')
+  with v2_2_image.FromDisk(config, zip(args.digest or [], args.layer or []),
+                           legacy_base=args.tarball) as v2_2_img:
+    # Resolve the appropriate credential to use based on the standard Docker
+    # client logic.
+    try:
+      creds = docker_creds.DefaultKeychain.Resolve(name)
+    # pylint: disable=broad-except
+    except Exception as e:
+      logging.fatal('Error resolving credentials for %s: %s', name, e)
 
-  with docker_session.Push(name, creds, transport, threads=_THREADS) as session:
-    logging.info('Loading v2.2 image from disk ...')
-    with v2_2_image.FromDisk(config, zip(args.digest or [], args.layer or []),
-                             legacy_base=args.tarball) as v2_2_img:
-      logging.info('Starting upload ...')
-      if args.oci:
-        with oci_compat.OCIFromV22(v2_2_img) as oci_img:
-          session.upload(oci_img)
-          digest = oci_img.digest()
-      else:
-        session.upload(v2_2_img)
-        digest = v2_2_img.digest()
+    try:
+      with docker_session.Push(
+          name, creds, transport, threads=_THREADS) as session:
+        logging.info('Starting upload ...')
+        if args.oci:
+          with oci_compat.OCIFromV22(v2_2_img) as oci_img:
+            session.upload(oci_img)
+            digest = oci_img.digest()
+        else:
+          session.upload(v2_2_img)
+          digest = v2_2_img.digest()
 
-      print('{name} was published with digest: {digest}'.format(
-          name=name, digest=digest))
+        print('{name} was published with digest: {digest}'.format(
+            name=name, digest=digest))
+    # pylint: disable=broad-except
+    except Exception as e:
+      logging.fatal('Error publishing %s: %s', name, e)
 
 
 if __name__ == '__main__':

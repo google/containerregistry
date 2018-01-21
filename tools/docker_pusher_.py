@@ -74,7 +74,7 @@ def main():
   logging_setup.Init(args=args)
 
   if not args.name or not args.tarball:
-    raise Exception('--name and --tarball are required arguments.')
+    logging.fatal('--name and --tarball are required arguments.')
 
   retry_factory = retry.Factory()
   retry_factory = retry_factory.WithSourceTransportCallable(httplib2.Http)
@@ -85,24 +85,33 @@ def main():
   # directly is essentially nil.
   name = Tag(args.name, args.stamp_info_file)
 
-  # Resolve the appropriate credential to use based on the standard Docker
-  # client logic.
-  creds = docker_creds.DefaultKeychain.Resolve(name)
+  logging.info('Reading v2.2 image from tarball %r', args.tarball)
+  with v2_2_image.FromTarball(args.tarball) as v2_2_img:
+    # Resolve the appropriate credential to use based on the standard Docker
+    # client logic.
+    try:
+      creds = docker_creds.DefaultKeychain.Resolve(name)
+    # pylint: disable=broad-except
+    except Exception as e:
+      logging.fatal('Error resolving credentials for %s: %s', name, e)
 
-  with docker_session.Push(name, creds, transport, threads=_THREADS) as session:
-    logging.info('Reading v2.2 image from tarball %r', args.tarball)
-    with v2_2_image.FromTarball(args.tarball) as v2_2_img:
-      logging.info('Starting upload ...')
-      if args.oci:
-        with oci_compat.OCIFromV22(v2_2_img) as oci_img:
-          session.upload(oci_img)
-          digest = oci_img.digest()
-      else:
-        session.upload(v2_2_img)
-        digest = v2_2_img.digest()
+    try:
+      with docker_session.Push(
+          name, creds, transport, threads=_THREADS) as session:
+        logging.info('Starting upload ...')
+        if args.oci:
+          with oci_compat.OCIFromV22(v2_2_img) as oci_img:
+            session.upload(oci_img)
+            digest = oci_img.digest()
+        else:
+          session.upload(v2_2_img)
+          digest = v2_2_img.digest()
 
-      print('{name} was published with digest: {digest}'.format(
-          name=name, digest=digest))
+        print('{name} was published with digest: {digest}'.format(
+            name=name, digest=digest))
+    # pylint: disable=broad-except
+    except Exception as e:
+      logging.fatal('Error publishing %s: %s', name, e)
 
 
 if __name__ == '__main__':
