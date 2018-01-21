@@ -588,6 +588,9 @@ class FromDisk(DockerImage):
     layers: a list of pairs.  The first element is the path to a file containing
         the second element's sha256.  The second element is the .tar.gz of a
         filesystem layer.  These are ordered as they'd appear in the manifest.
+    uncompressed_layers: Optionally, a list of pairs. The first element is the
+        path to a file containing the second element's sha256.
+        The second element is the .tar of a filesystem layer.
     legacy_base: Optionally, the path to a legacy base image in FromTarball form
   """
 
@@ -595,9 +598,11 @@ class FromDisk(DockerImage):
       self,
       config_file,
       layers,
-      legacy_base=None
+      uncompressed_layers = None,
+      legacy_base = None
   ):
     self._config = config_file
+    self._manifest = None
     self._layers = []
     self._layer_to_filename = {}
     for (name_file, content_file) in layers:
@@ -606,44 +611,21 @@ class FromDisk(DockerImage):
       self._layers.append(layer_name)
       self._layer_to_filename[layer_name] = content_file
 
+    self._uncompressed_layers = []
+    self._uncompressed_layer_to_filename = {}
+    if uncompressed_layers:
+      for (name_file, content_file) in uncompressed_layers:
+        with open(name_file, 'r') as reader:
+          layer_name = 'sha256:' + reader.read()
+        self._uncompressed_layers.append(layer_name)
+        self._uncompressed_layer_to_filename[layer_name] = content_file
+
     self._legacy_base = None
     if legacy_base:
       with FromTarball(legacy_base) as base:
         self._legacy_base = base
 
-  def manifest(self):
-    """Override."""
-    return self._manifest
-
-  def config_file(self):
-    """Override."""
-    return self._config
-
-  # Could be large, do not memoize
-  def uncompressed_blob(self, digest):
-    """Override."""
-    if digest not in self._layer_to_filename:
-      # Leverage the FromTarball fast-path.
-      return self._legacy_base.uncompressed_blob(digest)
-    return super(FromDisk, self).uncompressed_blob(digest)
-
-  # Could be large, do not memoize
-  def blob(self, digest):
-    """Override."""
-    if digest not in self._layer_to_filename:
-      return self._legacy_base.blob(digest)
-    with open(self._layer_to_filename[digest], 'r') as reader:
-      return reader.read()
-
-  def blob_size(self, digest):
-    """Override."""
-    if digest not in self._layer_to_filename:
-      return self._legacy_base.blob_size(digest)
-    info = os.stat(self._layer_to_filename[digest])
-    return info.st_size
-
-  # __enter__ and __exit__ allow use as a context manager.
-  def __enter__(self):
+  def _populate_manifest(self):
     base_layers = []
     if self._legacy_base:
       base_layers = json.loads(self._legacy_base.manifest())['layers']
@@ -666,6 +648,49 @@ class FromDisk(DockerImage):
         ]
     }, sort_keys=True)
 
+  def manifest(self):
+    """Override."""
+    if not self._manifest:
+      self._populate_manifest()
+    return self._manifest
+
+  def config_file(self):
+    """Override."""
+    return self._config
+
+  # Could be large, do not memoize
+  def uncompressed_blob(self, digest):
+    """Override."""
+    if digest not in self._layer_to_filename:
+      # Leverage the FromTarball fast-path.
+      return self._legacy_base.uncompressed_blob(digest)
+    return super(FromDisk, self).uncompressed_blob(digest)
+
+  def uncompressed_layer(self, diff_id):
+    if diff_id in self._uncompressed_layer_to_filename:
+      with open(self._uncompressed_layer_to_filename[diff_id], 'r') as reader:
+        return reader.read()
+    if self._legacy_base and diff_id in self._legacy_base.diff_ids():
+      return self._legacy_base.uncompressed_layer(diff_id)
+    return super(FromDisk, self).uncompressed_layer(diff_id)
+
+  # Could be large, do not memoize
+  def blob(self, digest):
+    """Override."""
+    if digest not in self._layer_to_filename:
+      return self._legacy_base.blob(digest)
+    with open(self._layer_to_filename[digest], 'r') as reader:
+      return reader.read()
+
+  def blob_size(self, digest):
+    """Override."""
+    if digest not in self._layer_to_filename:
+      return self._legacy_base.blob_size(digest)
+    info = os.stat(self._layer_to_filename[digest])
+    return info.st_size
+
+  # __enter__ and __exit__ allow use as a context manager.
+  def __enter__(self):
     return self
 
   def __exit__(self, unused_type, unused_value, unused_traceback):
@@ -700,16 +725,16 @@ def extract(image, tar):
   fs = {}
 
   # Walk the layers, topmost first and add files.  If we've seen them in a
-  # higher layer then we skip them.
-  for layer in image.fs_layers():
-    buf = cStringIO.StringIO(image.blob(layer))
-    with tarfile.open(mode='r:gz', fileobj=buf) as layer_tar:
-      for member in layer_tar.getmembers():
+  # higher layer then we skip them
+  for layer in image.diff_ids():
+    buf = cStringIO.StringIO(image.uncompressed_layer(layer))
+    with tarfile.open(mode='r:', fileobj=buf) as layer_tar:
+      for tarinfo in layer_tar:
         # If we see a whiteout file, then don't add anything to the tarball
         # but ensure that any lower layers don't add a file with the whited
         # out name.
-        basename = os.path.basename(member.name)
-        dirname = os.path.dirname(member.name)
+        basename = os.path.basename(tarinfo.name)
+        dirname = os.path.dirname(tarinfo.name)
         tombstone = basename.startswith(_WHITEOUT_PREFIX)
         if tombstone:
           basename = basename[len(_WHITEOUT_PREFIX):]
@@ -727,9 +752,9 @@ def extract(image, tar):
         # Mark this file as handled by adding its name.
         # A non-directory implicitly tombstones any entries with
         # a matching (or child) name.
-        fs[name] = tombstone or not member.isdir()
+        fs[name] = tombstone or not tarinfo.isdir()
         if not tombstone:
-          if member.isfile():
-            tar.addfile(member, fileobj=layer_tar.extractfile(member.name))
+          if tarinfo.isfile():
+            tar.addfile(tarinfo, fileobj=layer_tar.extractfile(tarinfo))
           else:
-            tar.addfile(member, fileobj=None)
+            tar.addfile(tarinfo, fileobj=None)

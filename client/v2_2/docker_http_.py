@@ -214,16 +214,17 @@ class Transport(object):
         'content-type': 'application/json',
         'user-agent': docker_name.USER_AGENT,
     }
-    resp, unused_content = self._transport.request(
-        '{scheme}://{registry}/v2/'.format(scheme=Scheme(self._name.registry),
-                                           registry=self._name.registry),
+    resp, content = self._transport.request(
+        '{scheme}://{registry}/v2/'.format(
+            scheme=Scheme(self._name.registry), registry=self._name.registry),
         'GET',
         body=None,
         headers=headers)
 
     # We expect a www-authenticate challenge.
     _CheckState(resp.status in [httplib.OK, httplib.UNAUTHORIZED],
-                'Unexpected status: %d' % resp.status)
+                'Unexpected response pinging the registry: {}\nBody: {}'.format(
+                    resp.status, content or '<empty>'))
 
     # The registry is authenticated iff we have an authentication challenge.
     if resp.status == httplib.OK:

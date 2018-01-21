@@ -2,9 +2,6 @@ steps:
 # Build the importer PAR file
 - name: gcr.io/cloud-builders/bazel
   args: [
-    # TODO(user): Remove once this is released:
-    # https://github.com/GoogleCloudPlatform/cloud-builders/pull/29
-    '--output_base', '/workspace',
     'build', '//:importer.par',
     # TODO(user): Remove once PAR compilation runs properly inside
     # the Bazel sandbox on cloudbuild.

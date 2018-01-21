@@ -2,7 +2,6 @@ steps:
 # Build the puller PAR file
 - name: gcr.io/cloud-builders/bazel
   args: [
-    '--output_base', '/workspace',
     'build', '//:appender.par',
     # TODO(user): Remove once PAR compilation runs properly inside
     # the Bazel sandbox on cloudbuild.
