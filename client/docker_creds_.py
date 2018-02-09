@@ -18,6 +18,7 @@
 
 import abc
 import base64
+import errno
 import json
 import logging
 import os
@@ -149,10 +150,16 @@ class Helper(Basic):
 
     bin_name = 'docker-credential-{name}'.format(name=self._name)
     logging.info('Invoking %r to obtain Docker credentials.', bin_name)
-    p = subprocess.Popen([bin_name, 'get'],
-                         stdout=subprocess.PIPE,
-                         stdin=subprocess.PIPE,
-                         stderr=subprocess.STDOUT)
+    try:
+      p = subprocess.Popen([bin_name, 'get'],
+                           stdout=subprocess.PIPE,
+                           stdin=subprocess.PIPE,
+                           stderr=subprocess.STDOUT)
+    except OSError as e:
+      if e.errno == errno.ENOENT:
+        raise Exception('executable not found: ' + bin_name)
+      raise
+
     # Some keychains expect a scheme:
     # https://github.com/bazelbuild/rules_docker/issues/111
     stdout = p.communicate(input='https://' + self._registry)[0]
