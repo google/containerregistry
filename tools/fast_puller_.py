@@ -20,6 +20,7 @@ Unlike docker_puller the format this uses is proprietary.
 
 import argparse
 import logging
+import sys
 
 from containerregistry.client import docker_creds
 from containerregistry.client import docker_name
@@ -82,6 +83,7 @@ def main():
   # pylint: disable=broad-except
   except Exception as e:
     logging.fatal('Error resolving credentials for %s: %s', name, e)
+    sys.exit(1)
 
   try:
     logging.info('Pulling v2.2 image from %r ...', name)
@@ -98,6 +100,7 @@ def main():
   # pylint: disable=broad-except
   except Exception as e:
     logging.fatal('Error pulling and saving image %s: %s', name, e)
+    sys.exit(1)
 
 
 if __name__ == '__main__':

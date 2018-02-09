@@ -17,6 +17,7 @@
 
 import argparse
 import logging
+import sys
 import tarfile
 
 from containerregistry.client import docker_creds
@@ -74,6 +75,7 @@ def main():
 
   if not args.name or not args.tarball:
     logging.fatal('--name and --tarball are required arguments.')
+    sys.exit(1)
 
   retry_factory = retry.Factory()
   retry_factory = retry_factory.WithSourceTransportCallable(httplib2.Http)
@@ -100,6 +102,7 @@ def main():
   # pylint: disable=broad-except
   except Exception as e:
     logging.fatal('Error resolving credentials for %s: %s', name, e)
+    sys.exit(1)
 
   try:
     with tarfile.open(name=args.tarball, mode='w') as tar:
@@ -117,6 +120,7 @@ def main():
   # pylint: disable=broad-except
   except Exception as e:
     logging.fatal('Error pulling and saving image %s: %s', name, e)
+    sys.exit(1)
 
 
 if __name__ == '__main__':

@@ -547,7 +547,7 @@ class FromTarball(DockerImage):
         self._name = self._resolve_tag()
 
     for entry in manifest_list:
-      if not self._name or str(self._name) in entry.get('RepoTags') or []:
+      if not self._name or str(self._name) in (entry.get('RepoTags') or []):
         config = entry.get('Config')
         layers = entry.get('Layers', [])
 

@@ -17,6 +17,7 @@
 
 import argparse
 import logging
+import sys
 
 from containerregistry.client import docker_creds
 from containerregistry.client import docker_name
@@ -75,6 +76,7 @@ def main():
 
   if not args.name or not args.tarball:
     logging.fatal('--name and --tarball are required arguments.')
+    sys.exit(1)
 
   retry_factory = retry.Factory()
   retry_factory = retry_factory.WithSourceTransportCallable(httplib2.Http)
@@ -94,6 +96,7 @@ def main():
     # pylint: disable=broad-except
     except Exception as e:
       logging.fatal('Error resolving credentials for %s: %s', name, e)
+      sys.exit(1)
 
     try:
       with docker_session.Push(
@@ -112,6 +115,7 @@ def main():
     # pylint: disable=broad-except
     except Exception as e:
       logging.fatal('Error publishing %s: %s', name, e)
+      sys.exit(1)
 
 
 if __name__ == '__main__':

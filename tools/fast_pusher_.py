@@ -22,6 +22,7 @@ compatible with docker_pusher.
 
 import argparse
 import logging
+import sys
 
 from containerregistry.client import docker_creds
 from containerregistry.client import docker_name
@@ -94,6 +95,7 @@ def main():
 
   if not args.name:
     logging.fatal('--name is a required arguments.')
+    sys.exit(1)
 
   # This library can support push-by-digest, but the likelihood of a user
   # correctly providing us with the digest without using this library
@@ -103,9 +105,11 @@ def main():
   if not args.config and (args.layer or args.digest):
     logging.fatal(
         'Using --layer or --digest requires --config to be specified.')
+    sys.exit(1)
 
   if not args.config and not args.tarball:
     logging.fatal('Either --config or --tarball must be specified.')
+    sys.exit(1)
 
   # If config is specified, use that.  Otherwise, fallback on reading
   # the config from the tarball.
@@ -121,6 +125,7 @@ def main():
 
   if len(args.digest or []) != len(args.layer or []):
     logging.fatal('--digest and --layer must have matching lengths.')
+    sys.exit(1)
 
   retry_factory = retry.Factory()
   retry_factory = retry_factory.WithSourceTransportCallable(httplib2.Http)
@@ -136,6 +141,7 @@ def main():
     # pylint: disable=broad-except
     except Exception as e:
       logging.fatal('Error resolving credentials for %s: %s', name, e)
+      sys.exit(1)
 
     try:
       with docker_session.Push(
@@ -154,6 +160,7 @@ def main():
     # pylint: disable=broad-except
     except Exception as e:
       logging.fatal('Error publishing %s: %s', name, e)
+      sys.exit(1)
 
 
 if __name__ == '__main__':
