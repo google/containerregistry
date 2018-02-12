@@ -84,4 +84,7 @@ test_base registry.gitlab.com/mattmoor/test-project/image:latest python2.7 pytho
 # Test pulling by digest
 test_image gcr.io/google-containers/pause@sha256:9ce5316f9752b8347484ab0f6778573af15524124d52b93230b9a0dcc987e73e
 
+# Test pulling manifest list by digest, this should resolve to amd64/linux
+test_image index.docker.io/library/busybox@sha256:1669a6aa7350e1cdd28f972ddad5aceba2912f589f19a090ac75b7083da748db
+
 # TODO(user): Add an authenticated pull test.
