@@ -385,14 +385,19 @@ class _FakeTime(object):
 gzip.time = _FakeTime()
 
 
+# Checks the contents of a file for magic bytes that indicate that it's gzipped
+def is_compressed(name):
+  return name[0:2] == '\x1f\x8b'
+
+
 class FromTarball(DockerImage):
   """This decodes the image tarball output of docker_build for upload."""
 
   def __init__(
       self,
       tarball,
-      name=None,
-      compresslevel=9,
+      name = None,
+      compresslevel = 9,
   ):
     self._tarball = tarball
     self._compresslevel = compresslevel
@@ -403,13 +408,17 @@ class FromTarball(DockerImage):
     self._blob_names = None
     self._config_blob = None
 
-  def _content(self, name, memoize=True):
+  # Layers can come in two forms, as an uncompressed tar in a directory
+  # or as a gzipped tar. We need to account for both options, and be able
+  # to return both uncompressed and compressed data.
+  def _content(self, name, memoize = True,
+               should_be_compressed = False):
     """Fetches a particular path's contents from the tarball."""
     # Check our cache
     if memoize:
       with self._lock:
-        if name in self._memoize:
-          return self._memoize[name]
+        if (name, should_be_compressed) in self._memoize:
+          return self._memoize[(name, should_be_compressed)]
 
     # tarfile is inherently single-threaded:
     # https://mail.python.org/pipermail/python-bugs-list/2015-March/265999.html
@@ -417,29 +426,38 @@ class FromTarball(DockerImage):
     # we want to read.
     with tarfile.open(name=self._tarball, mode='r') as tar:
       try:
-        content = tar.extractfile(name).read()
+        # If the layer is compressed and we need to return compressed
+        # or if it's uncompressed and we need to return uncompressed
+        # then return the contents as is.
+        f = tar.extractfile(name)
+        content = f.read()
       except KeyError:
         content = tar.extractfile('./' + name).read()
-
+      # We need to compress before returning. Use gzip.
+      if should_be_compressed and not is_compressed(content):
+        buf = cStringIO.StringIO()
+        zipped = gzip.GzipFile(mode='wb', compresslevel=self._compresslevel,
+                               fileobj=buf)
+        try:
+          zipped.write(content)
+        finally:
+          zipped.close()
+        content = buf.getvalue()
+      # The layer is gzipped but we need to return the uncompressed content
+      # Open up the gzip and read the contents after.
+      elif not should_be_compressed and is_compressed(content):
+        buf = cStringIO.StringIO(content)
+        raw = gzip.GzipFile(mode='rb', fileobj=buf)
+        content = raw.read()
       # Populate our cache.
       if memoize:
         with self._lock:
-          self._memoize[name] = content
+          self._memoize[(name, should_be_compressed)] = content
       return content
 
   def _gzipped_content(self, name):
     """Returns the result of _content with gzip applied."""
-    unzipped = self._content(name, memoize=False)
-    buf = cStringIO.StringIO()
-    f = gzip.GzipFile(mode='wb', compresslevel=self._compresslevel, fileobj=buf)
-    try:
-      # If we are applying gzip, probability is high this could be large,
-      # so do not memoize.
-      f.write(unzipped)
-    finally:
-      f.close()
-    zipped = buf.getvalue()
-    return zipped
+    return self._content(name, memoize=False, should_be_compressed=True)
 
   def _populate_manifest_and_blobs(self):
     """Populates self._manifest and self._blob_names."""
@@ -490,7 +508,8 @@ class FromTarball(DockerImage):
     if not self._blob_names:
       self._populate_manifest_and_blobs()
     return self._content(self._blob_names[digest],  # pytype: disable=none-attr
-                         memoize=False)
+                         memoize=False,
+                         should_be_compressed=False)
 
   # Could be large, do not memoize
   def blob(self, digest):
@@ -507,7 +526,7 @@ class FromTarball(DockerImage):
     """Override."""
     for (layer, this_diff_id) in zip(reversed(self._layers), self.diff_ids()):
       if diff_id == this_diff_id:
-        return self._content(layer, memoize=False)
+        return self._content(layer, memoize=False, should_be_compressed=False)
     raise ValueError('Unmatched "diff_id": "%s"' % diff_id)
 
   def _resolve_tag(self):
