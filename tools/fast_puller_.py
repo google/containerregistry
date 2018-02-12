@@ -27,6 +27,7 @@ from containerregistry.client import docker_name
 from containerregistry.client.v2 import docker_image as v2_image
 from containerregistry.client.v2_2 import docker_http
 from containerregistry.client.v2_2 import docker_image as v2_2_image
+from containerregistry.client.v2_2 import docker_image_list as image_list
 from containerregistry.client.v2_2 import save
 from containerregistry.client.v2_2 import v2_compat
 from containerregistry.tools import logging_setup
@@ -48,6 +49,10 @@ parser.add_argument('--directory', action='store',
                     help='Where to save the image\'s files.')
 
 _THREADS = 8
+
+_PROCESSOR_ARCHITECTURE = 'amd64'
+
+_OPERATING_SYSTEM = 'linux'
 
 
 def main():
@@ -86,6 +91,19 @@ def main():
     sys.exit(1)
 
   try:
+    logging.info('Pulling manifest list from %r ...', name)
+    with image_list.FromRegistry(name, creds, transport) as img_list:
+      if img_list.exists():
+        platform = image_list.Platform({
+            'architecture': _PROCESSOR_ARCHITECTURE,
+            'os': _OPERATING_SYSTEM,
+        })
+        # pytype: disable=wrong-arg-types
+        with img_list.resolve(platform) as default_child:
+          save.fast(default_child, args.directory, threads=_THREADS)
+          return
+        # pytype: enable=wrong-arg-types
+
     logging.info('Pulling v2.2 image from %r ...', name)
     with v2_2_image.FromRegistry(name, creds, transport, accept) as v2_2_img:
       if v2_2_img.exists():

@@ -31,8 +31,8 @@ _TAG_CHARS = 'abcdefghijklmnopqrstuvwxyz0123456789_-.ABCDEFGHIJKLMNOPQRSTUVWXYZ'
 # These have the form: sha256:<hex string>
 _DIGEST_CHARS = 'sh:0123456789abcdef'
 
-# TODO(user): Add a flag to allow specifying custom app name to be appended to
-# useragent.
+# TODO(b/73235733): Add a flag to allow specifying custom app name to be
+# appended to useragent.
 _APP = os.path.basename(sys.argv[0]) if sys.argv[0] else 'console'
 USER_AGENT = '//containerregistry/client:%s' % _APP
 
