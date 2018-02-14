@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """This package facilitates HTTP/REST requests to the registry."""
 
 
@@ -24,10 +23,7 @@ import httplib2
 class BadStatusException(Exception):
   """Exceptions when an unexpected HTTP status is returned."""
 
-  def __init__(
-      self,
-      resp,
-      content):
+  def __init__(self, resp, content):
     message = 'Response:\n{resp}\nContent:\n{content}'.format(
         resp=resp, content=content)
     super(BadStatusException, self).__init__(message)
@@ -48,13 +44,12 @@ class BadStatusException(Exception):
 
 
 # pylint: disable=invalid-name
-def Request(
-    transport,
-    url,
-    credentials,
-    accepted_codes=None,
-    body=None,
-    content_type=None):
+def Request(transport,
+            url,
+            credentials,
+            accepted_codes = None,
+            body = None,
+            content_type = None):
   """Wrapper containing much of the boilerplate REST logic for Registry calls.
 
   Args:
@@ -78,8 +73,7 @@ def Request(
       'user-agent': docker_name.USER_AGENT,
   }
   resp, content = transport.request(
-      url, 'PUT' if body else 'GET',
-      body=body, headers=headers)
+      url, 'PUT' if body else 'GET', body=body, headers=headers)
 
   if resp.status not in accepted_codes:
     # Use the content returned by GCR as the error message.

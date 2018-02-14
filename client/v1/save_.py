@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """This package provides tools for saving docker images."""
 
 
@@ -27,14 +26,14 @@ from containerregistry.client.v1 import docker_image
 
 def multi_image_tarball(
     tag_to_image,
-    tar
-):
+    tar):
   """Produce a "docker save" compatible tarball from the DockerImages.
 
   Args:
     tag_to_image: A dictionary of tags to the images they label.
     tar: the open tarfile into which we are writing the image tarball.
   """
+
   def add_file(filename, contents):
     info = tarfile.TarInfo(filename)
     info.size = len(contents)
@@ -75,11 +74,8 @@ def multi_image_tarball(
   add_file('repositories', json.dumps(repositories, sort_keys=True))
 
 
-def tarball(
-    name,
-    image,
-    tar
-):
+def tarball(name, image,
+            tar):
   """Produce a "docker save" compatible tarball from the DockerImage.
 
   Args:
@@ -87,6 +83,7 @@ def tarball(
     image: a docker image to save.
     tar: the open tarfile into which we are writing the image tarball.
   """
+
   def add_file(filename, contents):
     info = tarfile.TarInfo(filename)
     info.size = len(contents)

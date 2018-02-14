@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """This package holds a handful of utilities for manipulating manifests."""
 
 
@@ -58,16 +57,14 @@ def _JoseBase64UrlDecode(message):
 
 
 def _ExtractProtectedRegion(
-    signature
-):
+    signature):
   """Extract the length and encoded suffix denoting the protected region."""
   protected = json.loads(_JoseBase64UrlDecode(signature['protected']))
   return (protected['formatLength'], protected['formatTail'])
 
 
 def _ExtractCommonProtectedRegion(
-    signatures
-):
+    signatures):
   """Verify that the signatures agree on the protected region and return one."""
   p = _ExtractProtectedRegion(signatures[0])
   for sig in signatures[1:]:
@@ -76,9 +73,7 @@ def _ExtractCommonProtectedRegion(
   return p
 
 
-def DetachSignatures(
-    manifest
-):
+def DetachSignatures(manifest):
   """Detach the signatures from the signed manifest and return the two halves.
 
   Args:
@@ -117,16 +112,15 @@ def Sign(unsigned_manifest):
 
 
 
-def _AttachSignatures(
-    manifest,
-    signatures
-):
+def _AttachSignatures(manifest,
+                      signatures):
   """Attach the provided signatures to the provided naked manifest."""
   (format_length, format_tail) = _ExtractCommonProtectedRegion(signatures)
   prefix = manifest[0:format_length]
   suffix = _JoseBase64UrlDecode(format_tail)
   return '{prefix},"signatures":{signatures}{suffix}'.format(
-      prefix=prefix, signatures=json.dumps(signatures, sort_keys=True),
+      prefix=prefix,
+      signatures=json.dumps(signatures, sort_keys=True),
       suffix=suffix)
 
 

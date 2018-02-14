@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """This package provides compatibility interfaces for v1/v2."""
 
 
@@ -37,7 +36,7 @@ class V1FromV2(v1_image.DockerImage):
     self._ComputeLayerMapping()
 
   def _ComputeLayerMapping(self):
-    """Parse the v2 manifest and extract indicies to efficiently answer v1 apis.
+    """Parse the v2 manifest and extract indices to efficiently answer v1 apis.
 
     This reads the v2 manifest, corrolating the v1 compatibility and v2 fsLayer
     arrays and creating three indices for efficiently answering v1 queries:
@@ -142,17 +141,25 @@ class V2FromV1(v2_image.DockerImage):
       fs_layers += [{'blobSum': digest}]
       self._layer_map[digest] = layer_id
 
-    self._manifest = util.Sign(json.dumps({
-        'schemaVersion': 1,
-        'name': 'unused',
-        'tag': 'unused',
-        'architecture': 'amd64',
-        'fsLayers': fs_layers,
-        'history': [
-            {'v1Compatibility': self._v1_image.json(layer_id)}
-            for layer_id in self._v1_image.ancestry(self._v1_image.top())
-        ],
-    }, sort_keys=True))
+    self._manifest = util.Sign(
+        json.dumps(
+            {
+                'schemaVersion':
+                    1,
+                'name':
+                    'unused',
+                'tag':
+                    'unused',
+                'architecture':
+                    'amd64',
+                'fsLayers':
+                    fs_layers,
+                'history': [{
+                    'v1Compatibility': self._v1_image.json(layer_id)
+                } for layer_id in self._v1_image.ancestry(self._v1_image.top())
+                           ],
+            },
+            sort_keys=True))
 
   def manifest(self):
     """Override."""

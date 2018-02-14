@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """This package provides DockerImage for examining docker_build outputs."""
 
 
@@ -40,7 +39,7 @@ import httplib2
 class DockerImage(object):
   """Interface for implementations that interact with Docker images."""
 
-  __metaclass__ = abc.ABCMeta  # For enforcing that methods are overriden.
+  __metaclass__ = abc.ABCMeta  # For enforcing that methods are overridden.
 
   # pytype: disable=bad-return-type
   @abc.abstractmethod
@@ -139,19 +138,18 @@ class _FakeTime(object):
   def time(self):
     return 1225856967.109
 
+
 gzip.time = _FakeTime()
 
 
 class FromShardedTarball(DockerImage):
   """This decodes the sharded image tarballs from docker_build."""
 
-  def __init__(
-      self,
-      layer_to_tarball,
-      top,
-      name=None,
-      compresslevel=9
-  ):
+  def __init__(self,
+               layer_to_tarball,
+               top,
+               name = None,
+               compresslevel = 9):
     self._layer_to_tarball = layer_to_tarball
     self._top = top
     self._compresslevel = compresslevel
@@ -159,12 +157,8 @@ class FromShardedTarball(DockerImage):
     self._lock = threading.Lock()
     self._name = name
 
-  def _content(
-      self,
-      layer_id,
-      name,
-      memoize=True
-  ):
+  def _content(self, layer_id, name,
+               memoize = True):
     """Fetches a particular path's contents from the tarball."""
     # Check our cache
     if memoize:
@@ -234,7 +228,7 @@ class FromShardedTarball(DockerImage):
     pass
 
 
-def _get_top(tarball, name=None):
+def _get_top(tarball, name = None):
   """Get the topmost layer in the image tarball."""
   with tarfile.open(name=tarball, mode='r') as tar:
     try:
@@ -263,24 +257,25 @@ def _get_top(tarball, name=None):
 class FromTarball(FromShardedTarball):
   """This decodes the image tarball output of docker_build for upload."""
 
-  def __init__(
-      self,
-      tarball,
-      name=None,
-      compresslevel=9
-  ):
+  def __init__(self,
+               tarball,
+               name = None,
+               compresslevel = 9):
     super(FromTarball, self).__init__(
-        lambda unused_id: tarball, _get_top(tarball, name),
-        name=name, compresslevel=compresslevel)
+        lambda unused_id: tarball,
+        _get_top(tarball, name),
+        name=name,
+        compresslevel=compresslevel)
 
 
 class FromRegistry(DockerImage):
   """This accesses a docker image hosted on a registry (non-local)."""
 
-  def __init__(self,
-               name,
-               basic_creds,
-               transport):
+  def __init__(
+      self,
+      name,
+      basic_creds,
+      transport):
     self._name = name
     self._creds = basic_creds
     self._transport = transport
@@ -301,21 +296,17 @@ class FromRegistry(DockerImage):
     """Lists the tags present in the remote repository."""
     return self.raw_tags().keys()
 
-  def raw_tags(
-      self
-  ):
+  def raw_tags(self):
     """Dictionary of tag to image id."""
     return self._tags
 
   def _content(self, suffix):
     if suffix not in self._response:
       _, self._response[suffix] = docker_http.Request(
-          self._transport,
-          '{scheme}://{endpoint}/v1/images/{suffix}'.format(
+          self._transport, '{scheme}://{endpoint}/v1/images/{suffix}'.format(
               scheme=docker_http.Scheme(self._endpoint),
               endpoint=self._endpoint,
-              suffix=suffix),
-          self._creds, [httplib.OK])
+              suffix=suffix), self._creds, [httplib.OK])
     return self._response[suffix]
 
   def json(self, layer_id):
@@ -343,8 +334,7 @@ class FromRegistry(DockerImage):
         '{scheme}://{registry}/v1/repositories/{repository_name}/images'.format(
             scheme=docker_http.Scheme(self._name.registry),
             registry=self._name.registry,
-            repository_name=self._name.repository),
-        self._creds, [httplib.OK])
+            repository_name=self._name.repository), self._creds, [httplib.OK])
 
     # The response should have an X-Docker-Token header, which
     # we should extract and annotate subsequent requests with:
@@ -362,8 +352,7 @@ class FromRegistry(DockerImage):
         '{scheme}://{endpoint}/v1/repositories/{repository_name}/tags'.format(
             scheme=docker_http.Scheme(self._endpoint),
             endpoint=self._endpoint,
-            repository_name=self._name.repository),
-        self._creds, [httplib.OK])
+            repository_name=self._name.repository), self._creds, [httplib.OK])
 
     self._tags = json.loads(content)
     return self
@@ -382,9 +371,9 @@ class Random(DockerImage):
   # TODO(b/36589467): Add function arg for creating blob.
   def __init__(self,
                sample,
-               num_layers=5,
-               layer_byte_size=64,
-               blobs=None):
+               num_layers = 5,
+               layer_byte_size = 64,
+               blobs = None):
     # Generate the image.
     self._ancestry = []
     self._layers = {}
@@ -435,24 +424,20 @@ class Random(DockerImage):
     index = self._ancestry.index(layer_id)
     return self._ancestry[index:]
 
-  def _next_id(
-      self,
-      sample
-  ):
+  def _next_id(self, sample):
     return sample('0123456789abcdef', 64)
 
-  def _next_layer(
-      self,
-      sample,
-      layer_byte_size,
-      blob
-  ):
+  # pylint: disable=missing-docstring
+  def _next_layer(self, sample,
+                  layer_byte_size, blob):
     buf = cStringIO.StringIO()
 
     # TODO(user): Consider doing something more creative...
     with tarfile.open(fileobj=buf, mode='w:gz') as tar:
       if blob:
-        info = tarfile.TarInfo(name='./' + self._next_id(sample))  # pytype: disable=wrong-arg-types
+        info = tarfile.TarInfo(
+            name='./' +
+            self._next_id(sample))  # pytype: disable=wrong-arg-types
         info.size = len(blob)
         tar.addfile(info, fileobj=cStringIO.StringIO(blob))
       # Linux optimization, use dd for data file creation.
@@ -463,11 +448,11 @@ class Random(DockerImage):
         if os.path.exists(data_filename):
           os.remove(data_filename)
 
-        process = subprocess.Popen(['dd',
-                                    'if=/dev/urandom',
-                                    'of=%s' % data_filename,
-                                    'bs=1M',
-                                    'count=%d' % mb])
+        process = subprocess.Popen([
+            'dd', 'if=/dev/urandom',
+            'of=%s' % data_filename, 'bs=1M',
+            'count=%d' % mb
+        ])
         process.wait()
 
         with open(data_filename, 'rb') as fd:
@@ -477,7 +462,9 @@ class Random(DockerImage):
           os.rmdir(tempdir)
       else:
         data = sample(string.printable, layer_byte_size)
-        info = tarfile.TarInfo(name='./' + self._next_id(sample))  # pytype: disable=wrong-arg-types
+        info = tarfile.TarInfo(
+            name='./' +
+            self._next_id(sample))  # pytype: disable=wrong-arg-types
         info.size = len(data)
         tar.addfile(info, fileobj=cStringIO.StringIO(data))
 

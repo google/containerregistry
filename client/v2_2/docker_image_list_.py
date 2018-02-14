@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """This package provides DockerImageList for examining Manifest Lists."""
 
 
@@ -144,8 +143,8 @@ class DockerImageList(object):
     """
   # pytype: enable=bad-return-type
 
-  def resolve(self, target = None
-             ):
+  def resolve(self,
+              target = None):
     """Resolves a manifest list to a compatible manifest.
 
     Args:
@@ -232,17 +231,14 @@ class FromRegistry(DockerImageList):
     self._accepted_mimes = accepted_mimes
     self._response = {}
 
-  def _content(
-      self,
-      suffix,
-      accepted_mimes = None,
-      cache = True
-  ):
+  def _content(self,
+               suffix,
+               accepted_mimes = None,
+               cache = True):
     """Fetches content of the resources from registry by http calls."""
     if isinstance(self._name, docker_name.Repository):
       suffix = '{repository}/{suffix}'.format(
-          repository=self._name.repository,
-          suffix=suffix)
+          repository=self._name.repository, suffix=suffix)
 
     if suffix in self._response:
       return self._response[suffix]
@@ -367,8 +363,7 @@ class FromRegistry(DockerImageList):
 class FromList(DockerImageList):
   """This synthesizes a Manifest List from a list of images."""
 
-  def __init__(self,
-               images):
+  def __init__(self, images):
     self._images = images
 
   def manifest(self):
@@ -390,7 +385,6 @@ class FromList(DockerImageList):
       list_body['manifests'].append(manifest_body)
     return json.dumps(list_body, sort_keys=True)
 
-  # pytype: disable=bad-return-type
   def resolve_all(
       self, target = None):
     """Resolves a manifest list to a list of compatible manifests.

@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """This package defines Tag a way of representing an image uri."""
 
 
@@ -61,16 +60,16 @@ def _check_element(
   """
   length = len(element)
   if min_len and length < min_len:
-    raise BadNameException('Invalid %s: %s, must be at least %s characters'
-                           % (name, element, min_len))
+    raise BadNameException('Invalid %s: %s, must be at least %s characters' %
+                           (name, element, min_len))
 
   if max_len and length > max_len:
-    raise BadNameException('Invalid %s: %s, must be at most %s characters'
-                           % (name, element, max_len))
+    raise BadNameException('Invalid %s: %s, must be at most %s characters' %
+                           (name, element, max_len))
 
   if element.strip(characters):
-    raise BadNameException('Invalid %s: %s, acceptable characters include: %s'
-                           % (name, element, characters))
+    raise BadNameException('Invalid %s: %s, acceptable characters include: %s' %
+                           (name, element, characters))
 
 
 def _check_repository(repository):
@@ -98,7 +97,7 @@ def _check_registry(registry):
 class Registry(object):
   """Stores a docker registry name in a structured form."""
 
-  def __init__(self, name, strict=True):
+  def __init__(self, name, strict = True):
     if strict:
       if not name:
         raise BadNameException('A Docker registry domain must be specified.')
@@ -133,7 +132,7 @@ class Registry(object):
 class Repository(Registry):
   """Stores a docker repository name in a structured form."""
 
-  def __init__(self, name, strict=True):
+  def __init__(self, name, strict = True):
     if not name:
       raise BadNameException('A Docker image name must be specified')
 
@@ -191,7 +190,7 @@ class Repository(Registry):
 class Tag(Repository):
   """Stores a docker repository tag in a structured form."""
 
-  def __init__(self, name, strict=True):
+  def __init__(self, name, strict = True):
     parts = name.rsplit(':', 1)
     if len(parts) != 2:
       base = name
@@ -247,7 +246,7 @@ class Tag(Repository):
 class Digest(Repository):
   """Stores a docker repository digest in a structured form."""
 
-  def __init__(self, name, strict=True):
+  def __init__(self, name, strict = True):
     parts = name.split('@')
     if len(parts) != 2:
       raise self._validation_exception(name)
@@ -311,4 +310,3 @@ def from_string(name):
       pass
   raise BadNameException("'%s' is not a valid Tag, Digest, Repository or "
                          "Registry" % (name))
-
