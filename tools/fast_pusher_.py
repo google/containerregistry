@@ -40,28 +40,35 @@ import httplib2
 parser = argparse.ArgumentParser(
     description='Push images to a Docker Registry, faaaaaast.')
 
-parser.add_argument('--name', action='store',
-                    help=('The name of the docker image to push.'))
+parser.add_argument(
+    '--name', action='store', help=('The name of the docker image to push.'))
 
 # The name of this flag was chosen for compatibility with docker_pusher.py
-parser.add_argument('--tarball', action='store',
-                    help='An optional legacy base image tarball.')
+parser.add_argument(
+    '--tarball', action='store', help='An optional legacy base image tarball.')
 
-parser.add_argument('--config', action='store',
-                    help='The path to the file storing the image config.')
+parser.add_argument(
+    '--config',
+    action='store',
+    help='The path to the file storing the image config.')
 
-parser.add_argument('--digest', action='append',
-                    help='The list of layer digest filenames in order.')
+parser.add_argument(
+    '--digest',
+    action='append',
+    help='The list of layer digest filenames in order.')
 
-parser.add_argument('--layer', action='append',
-                    help='The list of layer filenames in order.')
+parser.add_argument(
+    '--layer', action='append', help='The list of layer filenames in order.')
 
-parser.add_argument('--stamp-info-file', action='append', required=False,
-                    help=('A list of files from which to read substitutions '
-                          'to make in the provided --name, e.g. {BUILD_USER}'))
+parser.add_argument(
+    '--stamp-info-file',
+    action='append',
+    required=False,
+    help=('A list of files from which to read substitutions '
+          'to make in the provided --name, e.g. {BUILD_USER}'))
 
-parser.add_argument('--oci', action='store_true',
-                    help='Push the image with an OCI Manifest.')
+parser.add_argument(
+    '--oci', action='store_true', help='Push the image with an OCI Manifest.')
 
 _THREADS = 8
 
@@ -75,8 +82,8 @@ def Tag(name, files):
         line = line.strip('\n')
         key, value = line.split(' ', 1)
         if key in format_args:
-          print ('WARNING: Duplicate value for key "%s": '
-                 'using "%s"' % (key, value))
+          print('WARNING: Duplicate value for key "%s": '
+                'using "%s"' % (key, value))
         format_args[key] = value
 
   formatted_name = name.format(**format_args)
@@ -132,8 +139,10 @@ def main():
   transport = transport_pool.Http(retry_factory.Build, size=_THREADS)
 
   logging.info('Loading v2.2 image from disk ...')
-  with v2_2_image.FromDisk(config, zip(args.digest or [], args.layer or []),
-                           legacy_base=args.tarball) as v2_2_img:
+  with v2_2_image.FromDisk(
+      config,
+      zip(args.digest or [], args.layer or []),
+      legacy_base=args.tarball) as v2_2_img:
     # Resolve the appropriate credential to use based on the standard Docker
     # client logic.
     try:

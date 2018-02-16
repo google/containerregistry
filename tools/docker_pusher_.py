@@ -35,18 +35,21 @@ import httplib2
 parser = argparse.ArgumentParser(
     description='Push images to a Docker Registry.')
 
-parser.add_argument('--name', action='store',
-                    help=('The name of the docker image to push.'))
+parser.add_argument(
+    '--name', action='store', help=('The name of the docker image to push.'))
 
-parser.add_argument('--tarball', action='store',
-                    help='Where to load the image tarball.')
+parser.add_argument(
+    '--tarball', action='store', help='Where to load the image tarball.')
 
-parser.add_argument('--stamp-info-file', action='append', required=False,
-                    help=('A list of files from which to read substitutions '
-                          'to make in the provided --name, e.g. {BUILD_USER}'))
+parser.add_argument(
+    '--stamp-info-file',
+    action='append',
+    required=False,
+    help=('A list of files from which to read substitutions '
+          'to make in the provided --name, e.g. {BUILD_USER}'))
 
-parser.add_argument('--oci', action='store_true',
-                    help='Push the image with an OCI Manifest.')
+parser.add_argument(
+    '--oci', action='store_true', help='Push the image with an OCI Manifest.')
 
 _THREADS = 8
 
@@ -60,8 +63,8 @@ def Tag(name, files):
         line = line.strip('\n')
         key, value = line.split(' ', 1)
         if key in format_args:
-          print ('WARNING: Duplicate value for key "%s": '
-                 'using "%s"' % (key, value))
+          print('WARNING: Duplicate value for key "%s": '
+                'using "%s"' % (key, value))
         format_args[key] = value
 
   formatted_name = name.format(**format_args)

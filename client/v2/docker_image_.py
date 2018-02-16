@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """This package provides DockerImage for examining docker_build outputs."""
 
 
@@ -62,6 +61,7 @@ class DockerImage(object):
     Returns:
       The raw json manifest
     """
+
   # pytype: enable=bad-return-type
 
   def blob_size(self, digest):
@@ -79,6 +79,7 @@ class DockerImage(object):
     Returns:
       The raw blob string of the layer.
     """
+
   # pytype: enable=bad-return-type
 
   def uncompressed_blob(self, digest):
@@ -104,22 +105,19 @@ class DockerImage(object):
 class FromRegistry(DockerImage):
   """This accesses a docker image hosted on a registry (non-local)."""
 
-  def __init__(
-      self,
-      name,
-      basic_creds,
-      transport):
+  def __init__(self, name,
+               basic_creds,
+               transport):
     self._name = name
     self._creds = basic_creds
     self._original_transport = transport
     self._response = {}
 
-  def _content(self, suffix, cache=True):
+  def _content(self, suffix, cache = True):
     """Fetches content of the resources from registry by http calls."""
     if isinstance(self._name, docker_name.Repository):
       suffix = '{repository}/{suffix}'.format(
-          repository=self._name.repository,
-          suffix=suffix)
+          repository=self._name.repository, suffix=suffix)
 
     if suffix in self._response:
       return self._response[suffix]
@@ -186,8 +184,7 @@ class FromRegistry(DockerImage):
     suffix = 'blobs/' + digest
     if isinstance(self._name, docker_name.Repository):
       suffix = '{repository}/{suffix}'.format(
-          repository=self._name.repository,
-          suffix=suffix)
+          repository=self._name.repository, suffix=suffix)
 
     resp, unused_content = self._transport.Request(
         '{scheme}://{registry}/v2/{suffix}'.format(
@@ -211,7 +208,7 @@ class FromRegistry(DockerImage):
           '%s vs. %s' % (digest, computed if c else '(content was empty)'))
     return c
 
-  def catalog(self, page_size=100):
+  def catalog(self, page_size = 100):
     # TODO(user): Handle docker_name.Repository for /v2/<name>/_catalog
     if isinstance(self._name, docker_name.Repository):
       raise ValueError('Expected docker_name.Registry for "name"')
@@ -248,10 +245,7 @@ class FromRegistry(DockerImage):
     return '<docker_image.FromRegistry name: {}>'.format(str(self._name))
 
 
-def _in_whiteout_dir(
-    fs,
-    name
-):
+def _in_whiteout_dir(fs, name):
   while name:
     dirname = os.path.dirname(name)
     if name == dirname:
@@ -260,6 +254,7 @@ def _in_whiteout_dir(
       return True
     name = dirname
   return False
+
 
 _WHITEOUT_PREFIX = '.wh.'
 

@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """This package sets up the Python logging system."""
 
 
@@ -30,7 +29,8 @@ TIMESTAMP_FORMAT = '%m%d %H:%M:%S'
 
 def DefineCommandLineArgs(argparser):
   argparser.add_argument(
-      '--stderrthreshold', action='store',
+      '--stderrthreshold',
+      action='store',
       help=('Write log events at or above this level to stderr.'))
 
 

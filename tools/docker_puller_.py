@@ -39,12 +39,14 @@ import httplib2
 parser = argparse.ArgumentParser(
     description='Pull images from a Docker Registry.')
 
-parser.add_argument('--name', action='store',
-                    help=('The name of the docker image to pull and save. '
-                          'Supports fully-qualified tag or digest references.'))
+parser.add_argument(
+    '--name',
+    action='store',
+    help=('The name of the docker image to pull and save. '
+          'Supports fully-qualified tag or digest references.'))
 
-parser.add_argument('--tarball', action='store',
-                    help='Where to save the image tarball.')
+parser.add_argument(
+    '--tarball', action='store', help='Where to save the image tarball.')
 
 _DEFAULT_TAG = 'i-was-a-digest'
 
@@ -65,8 +67,7 @@ _OPERATING_SYSTEM = 'linux'
 # only packages a single image, so this is preferable to doing something similar
 # in save.py itself.
 def _make_tag_if_digest(
-    name
-):
+    name):
   if isinstance(name, docker_name.Tag):
     return name
   return docker_name.Tag('{repo}:{tag}'.format(

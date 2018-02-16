@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """This package provides DockerImage for examining docker_build outputs."""
 
 
@@ -214,29 +213,25 @@ class Delegate(DockerImage):
 class FromRegistry(DockerImage):
   """This accesses a docker image hosted on a registry (non-local)."""
 
-  def __init__(
-      self,
-      name,
-      basic_creds,
-      transport,
-      accepted_mimes=docker_http.MANIFEST_SCHEMA2_MIMES):
+  def __init__(self,
+               name,
+               basic_creds,
+               transport,
+               accepted_mimes=docker_http.MANIFEST_SCHEMA2_MIMES):
     self._name = name
     self._creds = basic_creds
     self._original_transport = transport
     self._accepted_mimes = accepted_mimes
     self._response = {}
 
-  def _content(
-      self,
-      suffix,
-      accepted_mimes=None,
-      cache=True
-  ):
+  def _content(self,
+               suffix,
+               accepted_mimes = None,
+               cache = True):
     """Fetches content of the resources from registry by http calls."""
     if isinstance(self._name, docker_name.Repository):
       suffix = '{repository}/{suffix}'.format(
-          repository=self._name.repository,
-          suffix=suffix)
+          repository=self._name.repository, suffix=suffix)
 
     if suffix in self._response:
       return self._response[suffix]
@@ -277,8 +272,7 @@ class FromRegistry(DockerImage):
   def exists(self):
     try:
       manifest = json.loads(self.manifest(validate=False))
-      return (manifest['schemaVersion'] == 2 and
-              'layers' in manifest and
+      return (manifest['schemaVersion'] == 2 and 'layers' in manifest and
               self.media_type() in self._accepted_mimes)
     except docker_http.V2DiagnosticException as err:
       if err.status == httplib.NOT_FOUND:
@@ -310,8 +304,7 @@ class FromRegistry(DockerImage):
     suffix = 'blobs/' + digest
     if isinstance(self._name, docker_name.Repository):
       suffix = '{repository}/{suffix}'.format(
-          repository=self._name.repository,
-          suffix=suffix)
+          repository=self._name.repository, suffix=suffix)
 
     resp, unused_content = self._transport.Request(
         '{scheme}://{registry}/v2/{suffix}'.format(
@@ -335,7 +328,7 @@ class FromRegistry(DockerImage):
           '%s vs. %s' % (digest, computed if c else '(content was empty)'))
     return c
 
-  def catalog(self, page_size=100):
+  def catalog(self, page_size = 100):
     # TODO(user): Handle docker_name.Repository for /v2/<name>/_catalog
     if isinstance(self._name, docker_name.Repository):
       raise ValueError('Expected docker_name.Registry for "name"')
@@ -382,6 +375,7 @@ class _FakeTime(object):
   def time(self):
     return 1225856967.109
 
+
 gzip.time = _FakeTime()
 
 
@@ -411,7 +405,9 @@ class FromTarball(DockerImage):
   # Layers can come in two forms, as an uncompressed tar in a directory
   # or as a gzipped tar. We need to account for both options, and be able
   # to return both uncompressed and compressed data.
-  def _content(self, name, memoize = True,
+  def _content(self,
+               name,
+               memoize = True,
                should_be_compressed = False):
     """Fetches a particular path's contents from the tarball."""
     # Check our cache
@@ -436,8 +432,8 @@ class FromTarball(DockerImage):
       # We need to compress before returning. Use gzip.
       if should_be_compressed and not is_compressed(content):
         buf = cStringIO.StringIO()
-        zipped = gzip.GzipFile(mode='wb', compresslevel=self._compresslevel,
-                               fileobj=buf)
+        zipped = gzip.GzipFile(
+            mode='wb', compresslevel=self._compresslevel, fileobj=buf)
         try:
           zipped.write(content)
         finally:
@@ -507,9 +503,10 @@ class FromTarball(DockerImage):
     """Override."""
     if not self._blob_names:
       self._populate_manifest_and_blobs()
-    return self._content(self._blob_names[digest],  # pytype: disable=none-attr
-                         memoize=False,
-                         should_be_compressed=False)
+    return self._content(
+        self._blob_names[digest],  # pytype: disable=none-attr
+        memoize=False,
+        should_be_compressed=False)
 
   # Could be large, do not memoize
   def blob(self, digest):
@@ -618,8 +615,7 @@ class FromDisk(DockerImage):
       config_file,
       layers,
       uncompressed_layers = None,
-      legacy_base = None
-  ):
+      legacy_base = None):
     self._config = config_file
     self._manifest = None
     self._layers = []
@@ -649,23 +645,25 @@ class FromDisk(DockerImage):
     if self._legacy_base:
       base_layers = json.loads(self._legacy_base.manifest())['layers']
     # TODO(user): Update mimes here for oci_compat.
-    self._manifest = json.dumps({
-        'schemaVersion': 2,
-        'mediaType': docker_http.MANIFEST_SCHEMA2_MIME,
-        'config': {
-            'mediaType': docker_http.CONFIG_JSON_MIME,
-            'size': len(self.config_file()),
-            'digest': docker_digest.SHA256(self.config_file())
+    self._manifest = json.dumps(
+        {
+            'schemaVersion':
+                2,
+            'mediaType':
+                docker_http.MANIFEST_SCHEMA2_MIME,
+            'config': {
+                'mediaType': docker_http.CONFIG_JSON_MIME,
+                'size': len(self.config_file()),
+                'digest': docker_digest.SHA256(self.config_file())
+            },
+            'layers':
+                base_layers + [{
+                    'mediaType': docker_http.LAYER_MIME,
+                    'size': self.blob_size(digest),
+                    'digest': digest
+                } for digest in self._layers]
         },
-        'layers': base_layers + [
-            {
-                'mediaType': docker_http.LAYER_MIME,
-                'size': self.blob_size(digest),
-                'digest': digest
-            }
-            for digest in self._layers
-        ]
-    }, sort_keys=True)
+        sort_keys=True)
 
   def manifest(self):
     """Override."""
@@ -716,10 +714,7 @@ class FromDisk(DockerImage):
     pass
 
 
-def _in_whiteout_dir(
-    fs,
-    name
-):
+def _in_whiteout_dir(fs, name):
   while name:
     dirname = os.path.dirname(name)
     if name == dirname:
@@ -728,6 +723,7 @@ def _in_whiteout_dir(
       return True
     name = dirname
   return False
+
 
 _WHITEOUT_PREFIX = '.wh.'
 

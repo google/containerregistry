@@ -95,10 +95,7 @@ class Overrides(_OverridesT):
 
 
 # NOT THREADSAFE
-def _Resolve(
-    value,
-    environment
-):
+def _Resolve(value, environment):
   """Resolves environment variables embedded in the given value."""
   outer_env = os.environ
   try:
@@ -109,19 +106,16 @@ def _Resolve(
 
 
 # TODO(user): Use a typing.Generic?
-def _DeepCopySkipNull(
-    data
-):
+def _DeepCopySkipNull(data):
   """Do a deep copy, skipping null entry."""
   if isinstance(data, dict):
     return dict((_DeepCopySkipNull(k), _DeepCopySkipNull(v))
-                for k, v in six.iteritems(data) if v is not None)
+                for k, v in six.iteritems(data)
+                if v is not None)
   return copy.deepcopy(data)
 
 
-def _KeyValueToDict(
-    pair
-):
+def _KeyValueToDict(pair):
   """Converts an iterable object of key=value pairs to dictionary."""
   d = dict()
   for kv in pair:
@@ -130,18 +124,14 @@ def _KeyValueToDict(
   return d
 
 
-def _DictToKeyValue(
-    d
-):
+def _DictToKeyValue(d):
   return ['%s=%s' % (k, d[k]) for k in sorted(d.keys())]
 
 
-def Override(
-    data,
-    options,
-    architecture = 'amd64',
-    operating_system = 'linux'
-):
+def Override(data,
+             options,
+             architecture = 'amd64',
+             operating_system = 'linux'):
   """Create an image config possibly based on an existing one.
 
   Args:
@@ -215,11 +205,7 @@ def Override(
   diff_ids = defaults.get('rootfs', {}).get('diff_ids', [])
   if options.layers:
     layers = options.layers
-    diff_ids += [
-        'sha256:%s' % l
-        for l in layers
-        if l != _EMPTY_LAYER
-    ]
+    diff_ids += ['sha256:%s' % l for l in layers if l != _EMPTY_LAYER]
     output['rootfs'] = {
         'type': 'layers',
         'diff_ids': diff_ids,

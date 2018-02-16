@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """This package facilitates HTTP/REST requests to the registry."""
 
 
@@ -95,7 +94,7 @@ def _DiagnosticsFromContent(content):
   try:
     o = json.loads(content)
     return [Diagnostic(d) for d in o.get('errors', [])]
-  except:
+  except:  # pylint: disable=bare-except
     return [Diagnostic({
         'code': 'UNKNOWN',
         'message': content,
@@ -105,14 +104,12 @@ def _DiagnosticsFromContent(content):
 class V2DiagnosticException(Exception):
   """Exceptions when an unexpected HTTP status is returned."""
 
-  def __init__(
-      self,
-      resp,
-      content):
+  def __init__(self, resp, content):
     self._resp = resp
     self._diagnostics = _DiagnosticsFromContent(content)
-    message = '\n'.join(['response: %s' % resp] + [
-        '%s: %s' % (d.message, d.detail) for d in self._diagnostics])
+    message = '\n'.join(
+        ['response: %s' % resp] +
+        ['%s: %s' % (d.message, d.detail) for d in self._diagnostics])
     super(V2DiagnosticException, self).__init__(message)
 
   @property
@@ -136,10 +133,7 @@ class TokenRefreshException(BadStateException):
   """Exception when token refresh fails."""
 
 
-def _CheckState(
-    predicate,
-    message=None
-):
+def _CheckState(predicate, message = None):
   if not predicate:
     raise BadStateException(message if message else 'Unknown')
 
@@ -176,12 +170,9 @@ class Transport(object):
      action: One of docker_http.ACTIONS, for which we plan to use this transport
   """
 
-  def __init__(
-      self,
-      name,
-      creds,
-      transport,
-      action):
+  def __init__(self, name,
+               creds,
+               transport, action):
     self._name = name
     self._basic_creds = creds
     self._transport = transport
@@ -245,8 +236,8 @@ class Transport(object):
     self._authentication = self._authentication.capitalize()
 
     _CheckState(self._authentication in [_BASIC, _BEARER],
-                'Unexpected "www-authenticate" challenge type: %s'
-                % self._authentication)
+                'Unexpected "www-authenticate" challenge type: %s' %
+                self._authentication)
 
     # Default "_service" to the registry
     self._service = self._name.registry
@@ -292,9 +283,10 @@ class Transport(object):
     resp, content = self._transport.request(
         # 'realm' includes scheme and path
         '{realm}?{query}'.format(
-            realm=self._realm,
-            query=urllib.urlencode(parameters)),
-        'GET', body=None, headers=headers)
+            realm=self._realm, query=urllib.urlencode(parameters)),
+        'GET',
+        body=None,
+        headers=headers)
 
     if resp.status != httplib.OK:
       raise TokenRefreshException('Bad status during token exchange: %d\n%s' %
@@ -309,15 +301,14 @@ class Transport(object):
       self._creds = v2_2_creds.Bearer(wrapper_object['token'])
 
   # pylint: disable=invalid-name
-  def Request(
-      self,
-      url,
-      accepted_codes=None,
-      method=None,
-      body=None,
-      content_type=None,
-      accepted_mimes=None
-  ):
+  def Request(self,
+              url,
+              accepted_codes = None,
+              method = None,
+              body = None,
+              content_type = None,
+              accepted_mimes = None
+             ):
     """Wrapper containing much of the boilerplate REST logic for Registry calls.
 
     Args:
@@ -353,8 +344,8 @@ class Transport(object):
         headers['Authorization'] = auth
 
       if body:  # Requests w/ bodies should have content-type.
-        headers['content-type'] = (content_type if content_type else
-                                   'application/json')
+        headers['content-type'] = (
+            content_type if content_type else 'application/json')
 
       if accepted_mimes is not None:
         headers['Accept'] = ','.join(accepted_mimes)
@@ -378,14 +369,13 @@ class Transport(object):
 
     return resp, content
 
-  def PaginatedRequest(
-      self,
-      url,
-      accepted_codes=None,
-      method=None,
-      body=None,
-      content_type=None
-  ):
+  def PaginatedRequest(self,
+                       url,
+                       accepted_codes = None,
+                       method = None,
+                       body = None,
+                       content_type = None
+                      ):
     """Wrapper around Request that follows Link headers if they exist.
 
     Args:
@@ -402,16 +392,14 @@ class Transport(object):
     next_page = url
 
     while next_page:
-      resp, content = self.Request(next_page, accepted_codes, method,
-                                   body, content_type)
+      resp, content = self.Request(next_page, accepted_codes, method, body,
+                                   content_type)
       yield resp, content
 
       next_page = ParseNextLinkHeader(resp)
 
 
-def ParseNextLinkHeader(
-    resp
-):
+def ParseNextLinkHeader(resp):
   """Returns "next" link from RFC 5988 Link header or None if not present."""
   link = resp.get('link')
   if not link:

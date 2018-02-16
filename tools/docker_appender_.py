@@ -29,18 +29,18 @@ from containerregistry.transport import transport_pool
 
 import httplib2
 
-
 parser = argparse.ArgumentParser(
     description='Append tarballs to an image in a Docker Registry.')
 
-parser.add_argument('--src-image', action='store',
-                    help=('The name of the docker image to append to.'))
+parser.add_argument(
+    '--src-image',
+    action='store',
+    help=('The name of the docker image to append to.'))
 
-parser.add_argument('--tarball', action='store',
-                    help='The tarball to append.')
+parser.add_argument('--tarball', action='store', help='The tarball to append.')
 
-parser.add_argument('--dst-image', action='store',
-                    help='The name of the new image.')
+parser.add_argument(
+    '--dst-image', action='store', help='The name of the new image.')
 
 _THREADS = 8
 

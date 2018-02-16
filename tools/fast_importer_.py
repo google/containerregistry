@@ -29,16 +29,21 @@ from containerregistry.tools import patched
 parser = argparse.ArgumentParser(
     description='Import images from a tarball into our faaaaaast format.')
 
-parser.add_argument('--tarball', action='store',
-                    help=('The tarball containing the docker image to rewrite '
-                          'into our fast on-disk format.'))
+parser.add_argument(
+    '--tarball',
+    action='store',
+    help=('The tarball containing the docker image to rewrite '
+          'into our fast on-disk format.'))
 
-parser.add_argument('--format', action='store', default='tar',
-                    choices=['tar', 'tar.gz'],
-                    help='The form in which to save layers.')
+parser.add_argument(
+    '--format',
+    action='store',
+    default='tar',
+    choices=['tar', 'tar.gz'],
+    help='The form in which to save layers.')
 
-parser.add_argument('--directory', action='store',
-                    help='Where to save the image\'s files.')
+parser.add_argument(
+    '--directory', action='store', help='Where to save the image\'s files.')
 
 _THREADS = 32
 

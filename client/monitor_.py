@@ -25,7 +25,7 @@ class Context(object):
   All client operations are executed inside this context.
   """
 
-  __metaclass__ = abc.ABCMeta  # For enforcing that methods are overriden.
+  __metaclass__ = abc.ABCMeta  # For enforcing that methods are overridden.
 
   @abc.abstractmethod
   def __init__(self, operation):
@@ -36,8 +36,7 @@ class Context(object):
     return self
 
   @abc.abstractmethod
-  def __exit__(self,
-               exc_type,
+  def __exit__(self, exc_type,
                exc_value,
                traceback):
 
@@ -53,8 +52,7 @@ class Nop(Context):
   def __enter__(self):
     return self
 
-  def __exit__(self,
-               exc_type,
+  def __exit__(self, exc_type,
                exc_value,
                traceback):
     pass

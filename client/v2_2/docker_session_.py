@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """This package manages pushes to and deletes from a v2 docker registry."""
 
 
@@ -30,9 +29,7 @@ from containerregistry.client.v2_2 import docker_image_list as image_list
 import httplib2
 
 
-def _tag_or_digest(
-    name
-):
+def _tag_or_digest(name):
   if isinstance(name, docker_name.Tag):
     return name.tag
   else:
@@ -43,13 +40,12 @@ def _tag_or_digest(
 class Push(object):
   """Push encapsulates a Registry v2.2 Docker push session."""
 
-  def __init__(
-      self,
-      name,
-      creds,
-      transport,
-      mount=None,
-      threads=1):
+  def __init__(self,
+               name,
+               creds,
+               transport,
+               mount = None,
+               threads = 1):
     """Constructor.
 
     If multiple threads are used, the caller *must* ensure that the provided
@@ -67,8 +63,8 @@ class Push(object):
       ValueError: an incorrectly typed argument was supplied.
     """
     self._name = name
-    self._transport = docker_http.Transport(
-        name, creds, transport, docker_http.PUSH)
+    self._transport = docker_http.Transport(name, creds, transport,
+                                            docker_http.PUSH)
     self._mount = mount
     self._threads = threads
 
@@ -90,13 +86,15 @@ class Push(object):
     # HEAD the blob, and check for a 200
     resp, unused_content = self._transport.Request(
         '{base_url}/blobs/{digest}'.format(
-            base_url=self._base_url(),
-            digest=digest),
-        method='HEAD', accepted_codes=[httplib.OK, httplib.NOT_FOUND])
+            base_url=self._base_url(), digest=digest),
+        method='HEAD',
+        accepted_codes=[httplib.OK, httplib.NOT_FOUND])
 
     return resp.status == httplib.OK  # pytype: disable=attribute-error
 
-  def _manifest_exists(self, image):
+  def _manifest_exists(
+      self, image
+  ):
     """Check the remote for the given manifest by digest."""
     # GET the manifest by digest, and check for 200
     resp, unused_content = self._transport.Request(
@@ -108,44 +106,30 @@ class Push(object):
 
     return resp.status == httplib.OK  # pytype: disable=attribute-error
 
-  def _get_blob(
-      self,
-      image,
-      digest
-  ):
+  def _get_blob(self, image,
+                digest):
     if digest == image.config_blob():
       return image.config_file()
     return image.blob(digest)
 
-  def _monolithic_upload(
-      self,
-      image,
-      digest
-  ):
+  def _monolithic_upload(self, image,
+                         digest):
     self._transport.Request(
         '{base_url}/blobs/uploads/?digest={digest}'.format(
-            base_url=self._base_url(),
-            digest=digest),
-        method='POST', body=self._get_blob(image, digest),
+            base_url=self._base_url(), digest=digest),
+        method='POST',
+        body=self._get_blob(image, digest),
         accepted_codes=[httplib.CREATED])
 
-  def _add_digest(
-      self,
-      url,
-      digest
-  ):
+  def _add_digest(self, url, digest):
     scheme, netloc, path, query_string, fragment = urlparse.urlsplit(url)
     qs = urlparse.parse_qs(query_string)
     qs['digest'] = [digest]
     query_string = urllib.urlencode(qs, doseq=True)
-    return urlparse.urlunsplit(
-        (scheme, netloc, path, query_string, fragment))
+    return urlparse.urlunsplit((scheme, netloc, path, query_string, fragment))
 
-  def _put_upload(
-      self,
-      image,
-      digest
-  ):
+  def _put_upload(self, image,
+                  digest):
     mounted, location = self._start_upload(digest, self._mount)
 
     if mounted:
@@ -154,9 +138,12 @@ class Push(object):
 
     location = self._add_digest(location, digest)
     self._transport.Request(
-        location, method='PUT', body=self._get_blob(image, digest),
+        location,
+        method='PUT',
+        body=self._get_blob(image, digest),
         accepted_codes=[httplib.CREATED])
 
+  # pylint: disable=missing-docstring
   def _patch_upload(
       self,
       image,
@@ -171,21 +158,18 @@ class Push(object):
     location = self._get_absolute_url(location)
 
     resp, unused_content = self._transport.Request(
-        location, method='PATCH', body=self._get_blob(image, digest),
+        location,
+        method='PATCH',
+        body=self._get_blob(image, digest),
         content_type='application/octet-stream',
         accepted_codes=[httplib.NO_CONTENT, httplib.ACCEPTED, httplib.CREATED])
 
     location = self._add_digest(resp['location'], digest)
     location = self._get_absolute_url(location)
     self._transport.Request(
-        location, method='PUT', body=None,
-        accepted_codes=[httplib.CREATED])
+        location, method='PUT', body=None, accepted_codes=[httplib.CREATED])
 
-  def _put_blob(
-      self,
-      image,
-      digest
-  ):
+  def _put_blob(self, image, digest):
     """Upload the aufs .tgz for a single layer."""
     # We have a few choices for unchunked uploading:
     #   POST to /v2/<name>/blobs/uploads/?digest=<digest>
@@ -218,7 +202,8 @@ class Push(object):
         '{base_url}/manifests/{tag}'.format(
             base_url=self._base_url(),
             tag=self._name.tag),  # pytype: disable=attribute-error
-        method='GET', accepted_codes=[httplib.OK, httplib.NOT_FOUND])
+        method='GET',
+        accepted_codes=[httplib.OK, httplib.NOT_FOUND])
 
     if resp.status == httplib.NOT_FOUND:  # pytype: disable=attribute-error
       return None
@@ -228,8 +213,7 @@ class Push(object):
   def _put_manifest(
       self,
       image,
-      use_digest=False
-  ):
+      use_digest = False):
     """Upload the manifest for this image."""
     if use_digest:
       tag_or_digest = image.digest()
@@ -238,18 +222,16 @@ class Push(object):
 
     self._transport.Request(
         '{base_url}/manifests/{tag_or_digest}'.format(
-            base_url=self._base_url(),
-            tag_or_digest=tag_or_digest),
+            base_url=self._base_url(), tag_or_digest=tag_or_digest),
         method='PUT',
         body=image.manifest(),
         content_type=image.media_type(),
         accepted_codes=[httplib.OK, httplib.CREATED, httplib.ACCEPTED])
 
-  def _start_upload(
-      self,
-      digest,
-      mount=None
-  ):
+  def _start_upload(self,
+                    digest,
+                    mount = None
+                   ):
     """POST to begin the upload process with optional cross-repo mount param."""
     if not mount:
       # Do a normal POST to initiate an upload if mount is missing.
@@ -260,23 +242,17 @@ class Push(object):
       mount_from = '&'.join(
           ['from=' + urllib.quote(repo.repository, '') for repo in self._mount])
       url = '{base_url}/blobs/uploads/?mount={digest}&{mount_from}'.format(
-          base_url=self._base_url(),
-          digest=digest,
-          mount_from=mount_from)
+          base_url=self._base_url(), digest=digest, mount_from=mount_from)
       accepted_codes = [httplib.CREATED, httplib.ACCEPTED]
 
     resp, unused_content = self._transport.Request(
-        url, method='POST', body=None,
-        accepted_codes=accepted_codes)
+        url, method='POST', body=None, accepted_codes=accepted_codes)
     # pytype: disable=attribute-error
     return resp.status == httplib.CREATED, resp.get('location')
     # pytype: enable=attribute-error
 
-  def _upload_one(
-      self,
-      image,
-      digest
-  ):
+  def _upload_one(self, image,
+                  digest):
     """Upload a single layer, after checking whether it exists already."""
     if self._blob_exists(digest):
       logging.info('Layer %s exists, skipping', digest)
@@ -285,11 +261,9 @@ class Push(object):
     self._put_blob(image, digest)
     logging.info('Layer %s pushed.', digest)
 
-  def upload(
-      self,
-      image,
-      use_digest=False
-  ):
+  def upload(self,
+             image,
+             use_digest = False):
     """Upload the layers of the given image.
 
     Args:
@@ -319,7 +293,8 @@ class Push(object):
           max_workers=self._threads) as executor:
         future_to_params = {
             executor.submit(self._upload_one, image, digest): (image, digest)
-            for digest in image.blob_set()}
+            for digest in image.blob_set()
+        }
         for future in concurrent.futures.as_completed(future_to_params):
           future.result()
 
@@ -337,6 +312,7 @@ class Push(object):
     logging.info('Finished upload of: %s', self._name)
 
 
+# pylint: disable=invalid-name
 def Delete(
     name,
     creds,
@@ -349,10 +325,10 @@ def Delete(
     creds: the creds to use for deletion.
     transport: the transport to use to contact the registry.
   """
-  docker_transport = docker_http.Transport(
-      name, creds, transport, docker_http.DELETE)
+  docker_transport = docker_http.Transport(name, creds, transport,
+                                           docker_http.DELETE)
 
-  resp, unused_content = docker_transport.Request(
+  _, unused_content = docker_transport.Request(
       '{scheme}://{registry}/v2/{repository}/manifests/{entity}'.format(
           scheme=docker_http.Scheme(name.registry),
           registry=name.registry,

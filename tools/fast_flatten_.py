@@ -25,31 +25,43 @@ from containerregistry.tools import logging_setup
 parser = argparse.ArgumentParser(description='Flatten container images.')
 
 # The name of this flag was chosen for compatibility with docker_pusher.py
-parser.add_argument('--tarball', action='store',
-                    help='An optional legacy base image tarball.')
+parser.add_argument(
+    '--tarball', action='store', help='An optional legacy base image tarball.')
 
-parser.add_argument('--config', action='store',
-                    help='The path to the file storing the image config.')
+parser.add_argument(
+    '--config',
+    action='store',
+    help='The path to the file storing the image config.')
 
-parser.add_argument('--digest', action='append',
-                    help='The list of layer digest filenames in order.')
+parser.add_argument(
+    '--digest',
+    action='append',
+    help='The list of layer digest filenames in order.')
 
-parser.add_argument('--layer', action='append',
-                    help='The list of compressed layer filenames in order.')
+parser.add_argument(
+    '--layer',
+    action='append',
+    help='The list of compressed layer filenames in order.')
 
-parser.add_argument('--uncompressed_layer', action='append',
-                    help='The list of uncompressed layer filenames in order.')
+parser.add_argument(
+    '--uncompressed_layer',
+    action='append',
+    help='The list of uncompressed layer filenames in order.')
 
-parser.add_argument('--diff_id', action='append',
-                    help='The list of diff_ids in order.')
+parser.add_argument(
+    '--diff_id', action='append', help='The list of diff_ids in order.')
 
 # Output arguments.
-parser.add_argument('--filesystem', action='store',
-                    help='The name of where to write the filesystem tarball.')
+parser.add_argument(
+    '--filesystem',
+    action='store',
+    help='The name of where to write the filesystem tarball.')
 
-parser.add_argument('--metadata', action='store',
-                    help=('The name of where to write the container '
-                          'startup metadata.'))
+parser.add_argument(
+    '--metadata',
+    action='store',
+    help=('The name of where to write the container '
+          'startup metadata.'))
 
 
 def main():
@@ -73,15 +85,17 @@ def main():
   layers = zip(args.digest or [], args.layer or [])
   uncompressed_layers = zip(args.diff_id or [], args.uncompressed_layer or [])
   logging.info('Loading v2.2 image From Disk ...')
-  with v2_2_image.FromDisk(config_file=config,
-                           layers=layers,
-                           uncompressed_layers=uncompressed_layers,
-                           legacy_base=args.tarball) as v2_2_img:
+  with v2_2_image.FromDisk(
+      config_file=config,
+      layers=layers,
+      uncompressed_layers=uncompressed_layers,
+      legacy_base=args.tarball) as v2_2_img:
     with tarfile.open(args.filesystem, 'w') as tar:
       v2_2_image.extract(v2_2_img, tar)
 
     with open(args.metadata, 'w') as f:
       f.write(v2_2_img.config_file())
+
 
 if __name__ == '__main__':
   main()

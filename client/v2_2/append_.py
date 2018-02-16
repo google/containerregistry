@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """This package provides tools for appending layers to docker images."""
 
 
@@ -37,12 +36,11 @@ class Layer(docker_image.DockerImage):
   adds environment variables and exposes a port.
   """
 
-  def __init__(
-      self,
-      base,
-      tar_gz,
-      diff_id = None,
-      overrides = None):
+  def __init__(self,
+               base,
+               tar_gz,
+               diff_id = None,
+               overrides = None):
     """Creates a new layer on top of a base with optional tar.gz.
 
     Args:

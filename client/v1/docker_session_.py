@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """This package manages interaction sessions with the docker registry.
 
 'Push' implements the go/docker:push session.
@@ -35,11 +34,8 @@ import httplib2
 class Push(object):
   """Push encapsulates a go/docker:push session."""
 
-  def __init__(
-      self,
-      name,
-      creds,
-      transport):
+  def __init__(self, name, creds,
+               transport):
     """Constructor.
 
     Args:
@@ -97,38 +93,34 @@ class Push(object):
         accepted_codes=[httplib.OK, httplib.NOT_FOUND])
     return resp.status == httplib.OK
 
-  def _put_json(
-      self,
-      image,
-      layer_id
-  ):
+  def _put_json(self, image,
+                layer_id):
     """Upload the json for a single layer."""
-    docker_http.Request(self._transport,
-                        '{scheme}://{endpoint}/v1/images/{layer}/json'.format(
-                            scheme=docker_http.Scheme(self._endpoint),
-                            endpoint=self._endpoint,
-                            layer=layer_id),
-                        self._token_creds,
-                        accepted_codes=[httplib.OK],
-                        body=image.json(layer_id))
+    docker_http.Request(
+        self._transport,
+        '{scheme}://{endpoint}/v1/images/{layer}/json'.format(
+            scheme=docker_http.Scheme(self._endpoint),
+            endpoint=self._endpoint,
+            layer=layer_id),
+        self._token_creds,
+        accepted_codes=[httplib.OK],
+        body=image.json(layer_id))
 
-  def _put_layer(
-      self,
-      image,
-      layer_id
-  ):
+  def _put_layer(self, image,
+                 layer_id):
     """Upload the aufs tarball for a single layer."""
     # TODO(user): We should stream this instead of loading
     # it into memory.
-    docker_http.Request(self._transport,
-                        '{scheme}://{endpoint}/v1/images/{layer}/layer'.format(
-                            scheme=docker_http.Scheme(self._endpoint),
-                            endpoint=self._endpoint,
-                            layer=layer_id),
-                        self._token_creds,
-                        accepted_codes=[httplib.OK],
-                        body=image.layer(layer_id),
-                        content_type='application/octet-stream')
+    docker_http.Request(
+        self._transport,
+        '{scheme}://{endpoint}/v1/images/{layer}/layer'.format(
+            scheme=docker_http.Scheme(self._endpoint),
+            endpoint=self._endpoint,
+            layer=layer_id),
+        self._token_creds,
+        accepted_codes=[httplib.OK],
+        body=image.layer(layer_id),
+        content_type='application/octet-stream')
 
   def _put_checksum(self, image,
                     layer_id):
@@ -137,11 +129,8 @@ class Push(object):
     # so no point in implementing it.
     pass
 
-  def _upload_one(
-      self,
-      image,
-      layer_id
-  ):
+  def _upload_one(self, image,
+                  layer_id):
     """Upload a single layer, after checking whether it exists already."""
     if self._exists(layer_id):
       logging.info('Layer %s exists, skipping', layer_id)
@@ -170,11 +159,11 @@ class Push(object):
     """Upload the new value of the tag we are pushing."""
     docker_http.Request(
         self._transport,
-        '{scheme}://{endpoint}/v1/repositories/{repository}/tags/{tag}'
-        .format(scheme=docker_http.Scheme(self._endpoint),
-                endpoint=self._endpoint,
-                repository=self._name.repository,
-                tag=self._name.tag),
+        '{scheme}://{endpoint}/v1/repositories/{repository}/tags/{tag}'.format(
+            scheme=docker_http.Scheme(self._endpoint),
+            endpoint=self._endpoint,
+            repository=self._name.repository,
+            tag=self._name.tag),
         self._token_creds,
         accepted_codes=[httplib.OK],
         body='"%s"' % self._top)
@@ -183,10 +172,10 @@ class Push(object):
     """Close the session by putting to the .../images endpoint."""
     docker_http.Request(
         self._transport,
-        '{scheme}://{registry}/v1/repositories/{repository}/images'
-        .format(scheme=docker_http.Scheme(self._name.registry),
-                registry=self._name.registry,
-                repository=self._name.repository),
+        '{scheme}://{registry}/v1/repositories/{repository}/images'.format(
+            scheme=docker_http.Scheme(self._name.registry),
+            registry=self._name.registry,
+            repository=self._name.repository),
         self._basic_creds,
         accepted_codes=[httplib.NO_CONTENT],
         body='[]')
@@ -202,7 +191,7 @@ class Push(object):
     self._put_tag()
     # Then issuing:
     #   PUT H:P/v1/repositories/R/images
-    # to complete the transation, with basic auth talking to registry.
+    # to complete the transaction, with basic auth talking to registry.
     self._put_images()
 
     logging.info('Finished upload of: %s', self._name)

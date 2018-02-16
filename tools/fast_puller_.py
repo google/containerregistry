@@ -41,12 +41,14 @@ import httplib2
 parser = argparse.ArgumentParser(
     description='Pull images from a Docker Registry, faaaaast.')
 
-parser.add_argument('--name', action='store',
-                    help=('The name of the docker image to pull and save. '
-                          'Supports fully-qualified tag or digest references.'))
+parser.add_argument(
+    '--name',
+    action='store',
+    help=('The name of the docker image to pull and save. '
+          'Supports fully-qualified tag or digest references.'))
 
-parser.add_argument('--directory', action='store',
-                    help='Where to save the image\'s files.')
+parser.add_argument(
+    '--directory', action='store', help='Where to save the image\'s files.')
 
 _THREADS = 8
 

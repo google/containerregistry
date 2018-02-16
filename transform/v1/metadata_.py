@@ -21,39 +21,44 @@ import os
 
 
 _OverridesT = namedtuple('OverridesT', [
-    'name', 'parent', 'size', 'entrypoint', 'cmd',
-    'env', 'labels', 'ports', 'volumes', 'workdir', 'user'
+    'name', 'parent', 'size', 'entrypoint', 'cmd', 'env', 'labels', 'ports',
+    'volumes', 'workdir', 'user'
 ])
 
 
 class Overrides(_OverridesT):
   """Docker image layer metadata options."""
 
-  def __new__(
-      cls,
-      name=None,
-      parent=None,
-      size=None,
-      entrypoint=None,
-      cmd=None,
-      user=None,
-      labels=None,
-      env=None,
-      ports=None,
-      volumes=None,
-      workdir=None):
+  def __new__(cls,
+              name = None,
+              parent = None,
+              size = None,
+              entrypoint = None,
+              cmd = None,
+              user = None,
+              labels = None,
+              env = None,
+              ports = None,
+              volumes = None,
+              workdir = None):
     """Constructor."""
     return super(Overrides, cls).__new__(
-        cls, name=name, parent=parent, size=size, entrypoint=entrypoint,
-        cmd=cmd, user=user, labels=labels, env=env, ports=ports,
-        volumes=volumes, workdir=workdir)
+        cls,
+        name=name,
+        parent=parent,
+        size=size,
+        entrypoint=entrypoint,
+        cmd=cmd,
+        user=user,
+        labels=labels,
+        env=env,
+        ports=ports,
+        volumes=volumes,
+        workdir=workdir)
 
 
 # NOT THREADSAFE
-def _Resolve(
-    value,
-    environment
-):
+def _Resolve(value, environment):
   """Resolves environment variables embedded in the given value."""
   outer_env = os.environ
   try:
@@ -64,19 +69,16 @@ def _Resolve(
 
 
 # TODO(user): Use a typing.Generic?
-def _DeepCopySkipNull(
-    data
-):
+def _DeepCopySkipNull(data):
   """Do a deep copy, skipping null entry."""
-  if type(data) == type(dict()):
+  if type(data) == type(dict()):  # pylint: disable=unidiomatic-typecheck
     return dict((_DeepCopySkipNull(k), _DeepCopySkipNull(v))
-                for k, v in data.iteritems() if v is not None)
+                for k, v in data.iteritems()
+                if v is not None)
   return copy.deepcopy(data)
 
 
-def _KeyValueToDict(
-    pair
-):
+def _KeyValueToDict(pair):
   """Converts an iterable object of key=value pairs to dictionary."""
   d = dict()
   for kv in pair:
@@ -85,19 +87,15 @@ def _KeyValueToDict(
   return d
 
 
-def _DictToKeyValue(
-    d
-):
+def _DictToKeyValue(d):
   return ['%s=%s' % (k, d[k]) for k in sorted(d.keys())]
 
 
-def Override(
-    data,
-    options,
-    docker_version='1.5.0',
-    architecture='amd64',
-    operating_system='linux'
-):
+def Override(data,
+             options,
+             docker_version = '1.5.0',
+             architecture = 'amd64',
+             operating_system = 'linux'):
   """Rewrite and return a copy of the input data according to options.
 
   Args:

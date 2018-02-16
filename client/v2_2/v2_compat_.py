@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """This package provides compatibility interfaces for v1/v2."""
 
 
@@ -46,10 +45,8 @@ EMPTY_TAR_BYTES = (
 # is wasteful because we don't actually need them if we are just going to
 # re-save the image.  While we don't provide it here, this can be used to
 # synthesize a v2.2 config_file directly from a v1.docker_image.DockerImage.
-def config_file(
-    v1_compats,
-    diff_ids
-):
+def config_file(v1_compats,
+                diff_ids):
   """Compute the v2.2 config file given the history and diff ids."""
   # We want the first (last reversed) v1 compatibility field, from which
   # we will draw additional fields.
@@ -79,8 +76,10 @@ def config_file(
       }
   }
 
-  for key in ['architecture', 'config', 'container', 'container_config',
-              'docker_version', 'os']:
+  for key in [
+      'architecture', 'config', 'container', 'container_config',
+      'docker_version', 'os'
+  ]:
     if key in v1_compatibility:
       config[key] = v1_compatibility[key]
 
@@ -112,14 +111,15 @@ class V22FromV2(v2_2_image.DockerImage):
 
     # Compute the config_file for the v2.2 image.
     # TODO(b/62576117): Remove the pytype disable.
-    self._config_file = config_file([
-        json.loads(history.get('v1Compatibility', '{}'))
-        for history in reversed(manifest_schema1.get('history', []))
-    ], [
-        self._GetDiffId(digest)
-        for digest in reversed(
-            self._v2_image.fs_layers())  # pytype: disable=wrong-arg-types
-    ])
+    self._config_file = config_file(
+        [
+            json.loads(history.get('v1Compatibility', '{}'))
+            for history in reversed(manifest_schema1.get('history', []))
+        ],
+        [
+            self._GetDiffId(digest) for digest in reversed(
+                self._v2_image.fs_layers())  # pytype: disable=wrong-arg-types
+        ])
 
     config_descriptor = {
         'mediaType': docker_http.CONFIG_JSON_MIME,
@@ -142,10 +142,7 @@ class V22FromV2(v2_2_image.DockerImage):
     }
     self._manifest = json.dumps(manifest_schema2, sort_keys=True)
 
-  def _GetDiffId(
-      self,
-      digest
-  ):
+  def _GetDiffId(self, digest):
     """Hash the uncompressed layer blob."""
     return 'sha256:' + hashlib.sha256(
         self._v2_image.uncompressed_blob(digest)).hexdigest()
@@ -231,12 +228,10 @@ class V2FromV22(v2_image.DockerImage):
       manifest_schema1['architecture'] = config['architecture']
     self._manifest = v2_util.Sign(json.dumps(manifest_schema1, sort_keys=True))
 
-  def _GenerateV1LayerId(
-      self,
-      digest,
-      parent,
-      raw_config=None
-  ):
+  def _GenerateV1LayerId(self,
+                         digest,
+                         parent,
+                         raw_config = None):
     parts = digest.rsplit(':', 1)
     if len(parts) != 2:
       raise BadDigestException('Invalid Digest: %s, must be in '
@@ -263,9 +258,7 @@ class V2FromV22(v2_image.DockerImage):
       v1_compatibility['throwaway'] = True
 
     if 'created_by' in history:
-      v1_compatibility['container_config'] = {
-          'Cmd': [history['created_by']]
-      }
+      v1_compatibility['container_config'] = {'Cmd': [history['created_by']]}
 
     for key in ['created', 'comment', 'author']:
       if key in history:
@@ -288,20 +281,18 @@ class V2FromV22(v2_image.DockerImage):
     if 'empty_layer' in history:
       v1_compatibility['throwaway'] = True
 
-    for key in ['architecture', 'container', 'docker_version', 'os', 'config',
-                'container_config', 'created']:
+    for key in [
+        'architecture', 'container', 'docker_version', 'os', 'config',
+        'container_config', 'created'
+    ]:
       if key in config:
         v1_compatibility[key] = config[key]
 
     return json.dumps(v1_compatibility, sort_keys=True)
 
   def _GetSchema1LayerDigest(
-      self,
-      history,
-      layers,
-      v1_layer_index,
-      v2_layer_index
-  ):
+      self, history, layers,
+      v1_layer_index, v2_layer_index):
     if 'empty_layer' in history:
       return (EMPTY_TAR_DIGEST, v2_layer_index)
     else:

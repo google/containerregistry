@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """A threadsafe pool of httplib2.Http handlers."""
 
 
@@ -24,9 +23,7 @@ import httplib2
 class Http(httplib2.Http):
   """A threadsafe pool of httplib2.Http transports."""
 
-  def __init__(self,
-               transport_factory,
-               size=2):
+  def __init__(self, transport_factory, size=2):
     self._condition = threading.Condition(threading.Lock())
     self._transports = [transport_factory() for _ in xrange(size)]
 

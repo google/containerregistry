@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """This package provides DockerImage for examining docker_build outputs."""
 
 
@@ -37,12 +36,8 @@ class Layer(docker_image.DockerImage):
   adds environment variables and exposes a port.
   """
 
-  def __init__(
-      self,
-      base,
-      tar_gz,
-      port,
-      *envs):
+  def __init__(self, base, tar_gz,
+               port, *envs):
     """Creates a new layer on top of a base with optional tar.gz, port or envs.
 
     Args:
@@ -87,8 +82,8 @@ class Layer(docker_image.DockerImage):
       config['ExposedPorts'] = old_ports
     v1_compat['config'] = config
 
-    manifest['history'].insert(0, {'v1Compatibility': json.dumps(
-        v1_compat, sort_keys=True)})
+    manifest['history'].insert(
+        0, {'v1Compatibility': json.dumps(v1_compat, sort_keys=True)})
     self._manifest = util.Sign(json.dumps(manifest, sort_keys=True))
 
   def manifest(self):

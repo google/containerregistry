@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """This package provides tools for saving docker images."""
 
 
@@ -40,14 +39,14 @@ def _diff_id(v1_img, blob):
 def multi_image_tarball(
     tag_to_image,
     tar,
-    tag_to_v1_image=None
+    tag_to_v1_image = None
 ):
   """Produce a "docker save" compatible tarball from the DockerImages.
 
   Args:
     tag_to_image: A dictionary of tags to the images they label.
     tar: the open tarfile into which we are writing the image tarball.
-    tag_to_v1_image: A dictionary of tags to the the v1 form of the images
+    tag_to_v1_image: A dictionary of tags to the v1 form of the images
         they label.  If this isn't provided, the image is simply converted.
   """
 
@@ -85,7 +84,8 @@ def multi_image_tarball(
 
     # Add the manifests entry for this image.
     manifests.append({
-        'Config': digest + '.json',
+        'Config':
+            digest + '.json',
         'Layers': [
             layer_id + '/layer.tar'
             # We don't just exclude the empty tar because we leave its diff_id
@@ -103,11 +103,8 @@ def multi_image_tarball(
   add_file('manifest.json', json.dumps(manifests, sort_keys=True))
 
 
-def tarball(
-    name,
-    image,
-    tar
-):
+def tarball(name, image,
+            tar):
   """Produce a "docker save" compatible tarball from the DockerImage.
 
   Args:
@@ -118,11 +115,8 @@ def tarball(
   multi_image_tarball({name: image}, tar, {})
 
 
-def fast(
-    image,
-    directory,
-    threads = 1
-):
+def fast(image, directory,
+         threads = 1):
   """Produce a FromDisk compatible file layout under the provided directory.
 
   After calling this, the following filesystem will exist:
@@ -148,11 +142,8 @@ def fast(
     containing: (.sha256, .tar.gz) respectively.
   """
 
-  def write_file(
-      name,
-      accessor,
-      arg
-  ):
+  def write_file(name, accessor,
+                 arg):
     with open(name, 'wb') as f:
       f.write(accessor(arg))
 
@@ -168,9 +159,12 @@ def fast(
     for blob in reversed(image.fs_layers()):
       # Create a local copy
       digest_name = os.path.join(directory, '%03d.sha256' % idx)
-      f = executor.submit(write_file, digest_name,
-                          # Strip the sha256: prefix
-                          lambda blob: blob[7:], blob)
+      f = executor.submit(
+          write_file,
+          digest_name,
+          # Strip the sha256: prefix
+          lambda blob: blob[7:],
+          blob)
       future_to_params[f] = digest_name
 
       layer_name = os.path.join(directory, '%03d.tar.gz' % idx)
@@ -187,11 +181,10 @@ def fast(
   return (config_file, layers)
 
 
-def uncompressed(
-    image,
-    directory,
-    threads = 1
-):
+def uncompressed(image,
+                 directory,
+                 threads = 1
+                ):
   """Produce a format similar to `fast()`, but with uncompressed blobs.
 
   After calling this, the following filesystem will exist:
@@ -217,11 +210,8 @@ def uncompressed(
     containing: (.sha256, .tar) respectively.
   """
 
-  def write_file(
-      name,
-      accessor,
-      arg
-  ):
+  def write_file(name, accessor,
+                 arg):
     with open(name, 'wb') as f:
       f.write(accessor(arg))
 
@@ -237,14 +227,17 @@ def uncompressed(
     for diff_id in reversed(image.diff_ids()):
       # Create a local copy
       digest_name = os.path.join(directory, '%03d.sha256' % idx)
-      f = executor.submit(write_file, digest_name,
-                          # Strip the sha256: prefix
-                          lambda diff_id: diff_id[7:], diff_id)
+      f = executor.submit(
+          write_file,
+          digest_name,
+          # Strip the sha256: prefix
+          lambda diff_id: diff_id[7:],
+          diff_id)
       future_to_params[f] = digest_name
 
       layer_name = os.path.join(directory, '%03d.tar' % idx)
-      f = executor.submit(write_file, layer_name,
-                          image.uncompressed_layer, diff_id)
+      f = executor.submit(write_file, layer_name, image.uncompressed_layer,
+                          diff_id)
       future_to_params[f] = layer_name
 
       layers.append((digest_name, layer_name))
