@@ -1,10 +1,4 @@
-<table><tr>
-<td><a href="https://gcr.io"><img src="https://avatars2.githubusercontent.com/u/1342004?s=200&v=4" height="120"/></a></td>
-<td><a href="https://gcr.io"><img src="https://avatars2.githubusercontent.com/u/21046548?s=400&v=4" height="120"/></a></td>
-<td><a href="https://bazel.build"><img src="https://bazel.build/images/bazel-icon.svg" height="120"/></a></td>
-</tr></table>
-
-# `containerregistry` 
+# `containerregistry` [![Build Status](https://travis-ci.org/google/containerregistry.svg?branch=master)](https://travis-ci.org/google/containerregistry)
 
 A set of Python libraries and tools for interacting with a Docker Registry.
 
