@@ -426,9 +426,9 @@ class FromTarball(DockerImage):
         # or if it's uncompressed and we need to return uncompressed
         # then return the contents as is.
         f = tar.extractfile(name)
-        content = f.read()
+        content = f.read()  # pytype: disable=attribute-error
       except KeyError:
-        content = tar.extractfile('./' + name).read()
+        content = tar.extractfile('./' + name).read()  # pytype: disable=attribute-error
       # We need to compress before returning. Use gzip.
       if should_be_compressed and not is_compressed(content):
         buf = cStringIO.StringIO()

@@ -28,7 +28,7 @@ DEFAULT_BACKOFF_FACTOR = 0.5
 RETRYABLE_EXCEPTION_TYPES = [httplib.IncompleteRead]
 
 
-def _ShouldRetry(err):
+def ShouldRetry(err):
   for exception_type in RETRYABLE_EXCEPTION_TYPES:
     if isinstance(err, exception_type):
       return True
@@ -73,7 +73,7 @@ class RetryTransport(nested.NestedTransport):
                source_transport,
                max_retries = DEFAULT_MAX_RETRIES,
                backoff_factor = DEFAULT_BACKOFF_FACTOR,
-               should_retry_fn = _ShouldRetry):
+               should_retry_fn = ShouldRetry):
     super(RetryTransport, self).__init__(source_transport)
     self._max_retries = max_retries
     self._backoff_factor = backoff_factor

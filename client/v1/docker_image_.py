@@ -172,9 +172,9 @@ class FromShardedTarball(DockerImage):
     # we want to read.
     with tarfile.open(name=self._layer_to_tarball(layer_id), mode='r') as tar:
       try:
-        content = tar.extractfile(name).read()
+        content = tar.extractfile(name).read()  # pytype: disable=attribute-error
       except KeyError:
-        content = tar.extractfile('./' + name).read()
+        content = tar.extractfile('./' + name).read()  # pytype: disable=attribute-error
 
       # Populate our cache.
       if memoize:
@@ -232,9 +232,9 @@ def _get_top(tarball, name = None):
   """Get the topmost layer in the image tarball."""
   with tarfile.open(name=tarball, mode='r') as tar:
     try:
-      repositories = json.loads(tar.extractfile('repositories').read())
+      repositories = json.loads(tar.extractfile('repositories').read())  # pytype: disable=attribute-error
     except KeyError:
-      repositories = json.loads(tar.extractfile('./repositories').read())
+      repositories = json.loads(tar.extractfile('./repositories').read())  # pytype: disable=attribute-error
 
   if name:
     key = str(name.as_repository())
