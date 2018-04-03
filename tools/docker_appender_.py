@@ -71,7 +71,8 @@ def main():
       new_img = append.Layer(src_image, f.read())
 
   creds = docker_creds.DefaultKeychain.Resolve(dst)
-  with docker_session.Push(dst, creds, transport, threads=_THREADS) as session:
+  with docker_session.Push(dst, creds, transport, threads=_THREADS,
+                           mount=[src.as_repository()]) as session:
     logging.info('Starting upload ...')
     session.upload(new_img)
     digest = new_img.digest()

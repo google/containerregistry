@@ -394,7 +394,7 @@ class Transport(object):
     while next_page:
       resp, content = self.Request(next_page, accepted_codes, method, body,
                                    content_type)
-      yield resp, content
+      yield resp, content  # pytype: disable=bad-return-type
 
       next_page = ParseNextLinkHeader(resp)
 

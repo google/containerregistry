@@ -60,7 +60,7 @@ def config_file(v1_compats,
     history = {}
     if 'container_config' in v1_compatibility:
       container_config = v1_compatibility.get('container_config')
-      if container_config.get('Cmd'):
+      if container_config.get('Cmd'):  # pytype: disable=attribute-error
         history['created_by'] = container_config['Cmd'][0]
 
     if 'created' in v1_compatibility:
