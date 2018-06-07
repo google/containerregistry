@@ -13,7 +13,9 @@
 # limitations under the License.
 """This package manipulates v2.2 image configuration metadata."""
 
+from __future__ import absolute_import
 
+from __future__ import print_function
 
 from collections import namedtuple
 import copy
@@ -31,7 +33,7 @@ _OverridesT = namedtuple('OverridesT', [
 # Unix epoch 0, representable in 32 bits.
 _DEFAULT_TIMESTAMP = '1970-01-01T00:00:00Z'
 
-_EMPTY_LAYER = hashlib.sha256(''.encode('utf-8')).hexdigest()
+_EMPTY_LAYER = hashlib.sha256(b'').hexdigest()
 
 
 class Overrides(_OverridesT):
@@ -167,7 +169,7 @@ def Override(data,
     # Build a dictionary of existing environment variables (used by _Resolve).
     environ_dict = _KeyValueToDict(output['config'].get('Env', []))
     # Merge in new environment variables, resolving references.
-    for k, v in options.env.iteritems():
+    for k, v in six.iteritems(options.env):
       # Resolve handles scenarios like "PATH=$PATH:...".
       environ_dict[k] = _Resolve(v, environ_dict)
     output['config']['Env'] = _DictToKeyValue(environ_dict)
@@ -175,7 +177,7 @@ def Override(data,
   # TODO(user) Label is currently docker specific
   if options.labels:
     label_dict = output['config'].get('Labels', {})
-    for k, v in options.labels.iteritems():
+    for k, v in six.iteritems(options.labels):
       label_dict[k] = v
     output['config']['Labels'] = label_dict
 

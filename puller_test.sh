@@ -73,7 +73,8 @@ test_image index.docker.io/library/busybox:latest
 test_image quay.io/coreos/etcd:latest
 
 # Test pulling from Bintray.io
-test_image jfrog-int-docker-devops-registry.bintray.io/alpine:latest
+# TODO: "Server presented certificate that does not match host jfrog-int-docker-devops-registry.bintray.io"
+# test_image jfrog-int-docker-devops-registry.bintray.io/alpine:latest
 
 # Gitlab only works with Python 2.7.9+ because it uses SNI for HTTP.
 # As of this CL, the official python:2.7 image uses 2.7.13.

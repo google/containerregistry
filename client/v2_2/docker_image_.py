@@ -13,12 +13,14 @@
 # limitations under the License.
 """This package provides DockerImage for examining docker_build outputs."""
 
+from __future__ import absolute_import
+from __future__ import division
 
+from __future__ import print_function
 
 import abc
-import cStringIO
 import gzip
-import httplib
+import io
 import json
 import os
 import tarfile
@@ -29,16 +31,17 @@ from containerregistry.client import docker_name
 from containerregistry.client.v2_2 import docker_digest
 from containerregistry.client.v2_2 import docker_http
 import httplib2
+import six
+from six.moves import zip  # pylint: disable=redefined-builtin
+import six.moves.http_client
 
 
 class DigestMismatchedError(Exception):
   """Exception raised when a digest mismatch is encountered."""
 
 
-class DockerImage(object):
+class DockerImage(six.with_metaclass(abc.ABCMeta, object)):
   """Interface for implementations that interact with Docker images."""
-
-  __metaclass__ = abc.ABCMeta  # For enforcing that methods are overridden.
 
   def fs_layers(self):
     """The ordered collection of filesystem layers that comprise this image."""
@@ -60,7 +63,7 @@ class DockerImage(object):
 
   def digest(self):
     """The digest of the manifest."""
-    return docker_digest.SHA256(self.manifest())
+    return docker_digest.SHA256(self.manifest().encode('utf8'))
 
   def media_type(self):
     """The media type of the manifest."""
@@ -81,7 +84,7 @@ class DockerImage(object):
   # pytype: disable=bad-return-type
   @abc.abstractmethod
   def config_file(self):
-    """The raw blob string of the config file."""
+    """The raw blob bytes of the config file."""
   # pytype: enable=bad-return-type
 
   def blob_size(self, digest):
@@ -97,20 +100,21 @@ class DockerImage(object):
       digest: the 'algo:digest' of the layer being addressed.
 
     Returns:
-      The raw blob string of the layer.
+      The raw blob bytes of the layer.
     """
   # pytype: enable=bad-return-type
 
   def uncompressed_blob(self, digest):
     """Same as blob() but uncompressed."""
     zipped = self.blob(digest)
-    buf = cStringIO.StringIO(zipped)
+    buf = io.BytesIO(zipped)
     f = gzip.GzipFile(mode='rb', fileobj=buf)
     unzipped = f.read()
     return unzipped
 
   def _diff_id_to_digest(self, diff_id):
-    for (this_digest, this_diff_id) in zip(self.fs_layers(), self.diff_ids()):
+    for (this_digest, this_diff_id) in six.moves.zip(self.fs_layers(),
+                                                     self.diff_ids()):
       if this_diff_id == diff_id:
         return this_digest
     raise ValueError('Unmatched "diff_id": "%s"' % diff_id)
@@ -124,7 +128,7 @@ class DockerImage(object):
       diff_id: the 'algo:digest' of the layer being addressed.
 
     Returns:
-      The raw compressed blob string of the layer.
+      The raw compressed blob bytes of the layer.
     """
     return self.blob(self._diff_id_to_digest(diff_id))
 
@@ -217,7 +221,7 @@ class FromRegistry(DockerImage):
                name,
                basic_creds,
                transport,
-               accepted_mimes=docker_http.MANIFEST_SCHEMA2_MIMES):
+               accepted_mimes = docker_http.MANIFEST_SCHEMA2_MIMES):
     self._name = name
     self._creds = basic_creds
     self._original_transport = transport
@@ -241,7 +245,7 @@ class FromRegistry(DockerImage):
             scheme=docker_http.Scheme(self._name.registry),
             registry=self._name.registry,
             suffix=suffix),
-        accepted_codes=[httplib.OK],
+        accepted_codes=[six.moves.http_client.OK],
         accepted_mimes=accepted_mimes)
     if cache:
       self._response[suffix] = content
@@ -250,7 +254,7 @@ class FromRegistry(DockerImage):
   def _tags(self):
     # See //cloud/containers/registry/proto/v2/tags.proto
     # for the full response structure.
-    return json.loads(self._content('tags/list'))
+    return json.loads(self._content('tags/list').decode('utf8'))
 
   def tags(self):
     return self._tags().get('tags', [])
@@ -275,7 +279,7 @@ class FromRegistry(DockerImage):
       return (manifest['schemaVersion'] == 2 and 'layers' in manifest and
               self.media_type() in self._accepted_mimes)
     except docker_http.V2DiagnosticException as err:
-      if err.status == httplib.NOT_FOUND:
+      if err.status == six.moves.http_client.NOT_FOUND:
         return False
       raise
 
@@ -284,7 +288,8 @@ class FromRegistry(DockerImage):
     # GET server1/v2/<name>/manifests/<tag_or_digest>
 
     if isinstance(self._name, docker_name.Tag):
-      return self._content('manifests/' + self._name.tag, self._accepted_mimes)
+      path = 'manifests/' + self._name.tag
+      return self._content(path, self._accepted_mimes).decode('utf8')
     else:
       assert isinstance(self._name, docker_name.Digest)
       c = self._content('manifests/' + self._name.digest, self._accepted_mimes)
@@ -293,11 +298,11 @@ class FromRegistry(DockerImage):
         raise DigestMismatchedError(
             'The returned manifest\'s digest did not match requested digest, '
             '%s vs. %s' % (self._name.digest, computed))
-      return c
+      return c.decode('utf8')
 
   def config_file(self):
     """Override."""
-    return self.blob(self.config_blob())
+    return self.blob(self.config_blob()).decode('utf8')
 
   def blob_size(self, digest):
     """The byte size of the raw blob."""
@@ -312,7 +317,7 @@ class FromRegistry(DockerImage):
             registry=self._name.registry,
             suffix=suffix),
         method='HEAD',
-        accepted_codes=[httplib.OK])
+        accepted_codes=[six.moves.http_client.OK])
 
     return int(resp['content-length'])
 
@@ -339,8 +344,8 @@ class FromRegistry(DockerImage):
         page_size=page_size)
 
     for _, content in self._transport.PaginatedRequest(
-        url, accepted_codes=[httplib.OK]):
-      wrapper_object = json.loads(content)
+        url, accepted_codes=[six.moves.http_client.OK]):
+      wrapper_object = json.loads(content.decode('utf8'))
 
       if 'repositories' not in wrapper_object:
         raise docker_http.BadStateException(
@@ -368,8 +373,7 @@ class FromRegistry(DockerImage):
 # Gzip injects a timestamp into its output, which makes its output and digest
 # non-deterministic.  To get reproducible pushes, freeze time.
 # This approach is based on the following StackOverflow answer:
-# http://stackoverflow.com/
-#    questions/264224/setting-the-gzip-timestamp-from-python
+# http://stackoverflow.com/questions/264224/setting-the-gzip-timestamp-from-python
 class _FakeTime(object):
 
   def time(self):
@@ -381,7 +385,7 @@ gzip.time = _FakeTime()
 
 # Checks the contents of a file for magic bytes that indicate that it's gzipped
 def is_compressed(name):
-  return name[0:2] == '\x1f\x8b'
+  return name[0:2] == b'\x1f\x8b'
 
 
 class FromTarball(DockerImage):
@@ -420,18 +424,19 @@ class FromTarball(DockerImage):
     # https://mail.python.org/pipermail/python-bugs-list/2015-March/265999.html
     # so instead of locking, just open the tarfile for each file
     # we want to read.
-    with tarfile.open(name=self._tarball, mode='r') as tar:
+    with tarfile.open(name=self._tarball, mode='r:') as tar:
       try:
         # If the layer is compressed and we need to return compressed
         # or if it's uncompressed and we need to return uncompressed
         # then return the contents as is.
-        f = tar.extractfile(name)
+        f = tar.extractfile(str(name))
         content = f.read()  # pytype: disable=attribute-error
       except KeyError:
-        content = tar.extractfile('./' + name).read()  # pytype: disable=attribute-error
+        content = tar.extractfile(
+            str('./' + name)).read()  # pytype: disable=attribute-error
       # We need to compress before returning. Use gzip.
       if should_be_compressed and not is_compressed(content):
-        buf = cStringIO.StringIO()
+        buf = io.BytesIO()
         zipped = gzip.GzipFile(
             mode='wb', compresslevel=self._compresslevel, fileobj=buf)
         try:
@@ -442,7 +447,7 @@ class FromTarball(DockerImage):
       # The layer is gzipped but we need to return the uncompressed content
       # Open up the gzip and read the contents after.
       elif not should_be_compressed and is_compressed(content):
-        buf = cStringIO.StringIO(content)
+        buf = io.BytesIO(content)
         raw = gzip.GzipFile(mode='rb', fileobj=buf)
         content = raw.read()
       # Populate our cache.
@@ -457,7 +462,7 @@ class FromTarball(DockerImage):
 
   def _populate_manifest_and_blobs(self):
     """Populates self._manifest and self._blob_names."""
-    config_blob = docker_digest.SHA256(self.config_file())
+    config_blob = docker_digest.SHA256(self.config_file().encode('utf8'))
     manifest = {
         'mediaType': docker_http.MANIFEST_SCHEMA2_MIME,
         'schemaVersion': 2,
@@ -496,7 +501,7 @@ class FromTarball(DockerImage):
 
   def config_file(self):
     """Override."""
-    return self._content(self._config_file)
+    return self._content(self._config_file).decode('utf8')
 
   # Could be large, do not memoize
   def uncompressed_blob(self, digest):
@@ -504,7 +509,7 @@ class FromTarball(DockerImage):
     if not self._blob_names:
       self._populate_manifest_and_blobs()
     return self._content(
-        self._blob_names[digest],  # pytype: disable=none-attr
+        self._blob_names[digest],
         memoize=False,
         should_be_compressed=False)
 
@@ -514,9 +519,9 @@ class FromTarball(DockerImage):
     if not self._blob_names:
       self._populate_manifest_and_blobs()
     if digest == self._config_blob:
-      return self.config_file()
+      return self.config_file().encode('utf8')
     return self._gzipped_content(
-        self._blob_names[digest])  # pytype: disable=none-attr
+        self._blob_names[digest])
 
   # Could be large, do not memoize
   def uncompressed_layer(self, diff_id):
@@ -528,23 +533,24 @@ class FromTarball(DockerImage):
 
   def _resolve_tag(self):
     """Resolve the singleton tag this tarball contains using legacy methods."""
-    repositories = json.loads(self._content('repositories', memoize=False))
+    repo_bytes = self._content('repositories', memoize=False)
+    repositories = json.loads(repo_bytes.decode('utf8'))
     if len(repositories) != 1:
       raise ValueError('Tarball must contain a single repository, '
                        'or a name must be specified to FromTarball.')
 
-    for (repo, tags) in repositories.iteritems():
+    for (repo, tags) in six.iteritems(repositories):
       if len(tags) != 1:
         raise ValueError('Tarball must contain a single tag, '
                          'or a name must be specified to FromTarball.')
-      for (tag, unused_layer) in tags.iteritems():
+      for (tag, unused_layer) in six.iteritems(tags):
         return '{repository}:{tag}'.format(repository=repo, tag=tag)
 
     raise Exception('unreachable')
 
   # __enter__ and __exit__ allow use as a context manager.
   def __enter__(self):
-    manifest_json = self._content('manifest.json')
+    manifest_json = self._content('manifest.json').decode('utf8')
     manifest_list = json.loads(manifest_json)
 
     config = None
@@ -610,18 +616,17 @@ class FromDisk(DockerImage):
     legacy_base: Optionally, the path to a legacy base image in FromTarball form
   """
 
-  def __init__(
-      self,
-      config_file,
-      layers,
-      uncompressed_layers = None,
-      legacy_base = None):
+  def __init__(self,
+               config_file,
+               layers,
+               uncompressed_layers = None,
+               legacy_base = None):
     self._config = config_file
     self._manifest = None
     self._layers = []
     self._layer_to_filename = {}
     for (name_file, content_file) in layers:
-      with open(name_file, 'r') as reader:
+      with io.open(name_file, u'r') as reader:
         layer_name = 'sha256:' + reader.read()
       self._layers.append(layer_name)
       self._layer_to_filename[layer_name] = content_file
@@ -630,7 +635,7 @@ class FromDisk(DockerImage):
     self._uncompressed_layer_to_filename = {}
     if uncompressed_layers:
       for (name_file, content_file) in uncompressed_layers:
-        with open(name_file, 'r') as reader:
+        with io.open(name_file, u'r') as reader:
           layer_name = 'sha256:' + reader.read()
         self._uncompressed_layers.append(layer_name)
         self._uncompressed_layer_to_filename[layer_name] = content_file
@@ -652,9 +657,12 @@ class FromDisk(DockerImage):
             'mediaType':
                 docker_http.MANIFEST_SCHEMA2_MIME,
             'config': {
-                'mediaType': docker_http.CONFIG_JSON_MIME,
-                'size': len(self.config_file()),
-                'digest': docker_digest.SHA256(self.config_file())
+                'mediaType':
+                    docker_http.CONFIG_JSON_MIME,
+                'size':
+                    len(self.config_file()),
+                'digest':
+                    docker_digest.SHA256(self.config_file().encode('utf8'))
             },
             'layers':
                 base_layers + [{
@@ -685,7 +693,8 @@ class FromDisk(DockerImage):
 
   def uncompressed_layer(self, diff_id):
     if diff_id in self._uncompressed_layer_to_filename:
-      with open(self._uncompressed_layer_to_filename[diff_id], 'r') as reader:
+      with io.open(self._uncompressed_layer_to_filename[diff_id],
+                   u'rb') as reader:
         return reader.read()
     if self._legacy_base and diff_id in self._legacy_base.diff_ids():
       return self._legacy_base.uncompressed_layer(diff_id)
@@ -696,7 +705,7 @@ class FromDisk(DockerImage):
     """Override."""
     if digest not in self._layer_to_filename:
       return self._legacy_base.blob(digest)
-    with open(self._layer_to_filename[digest], 'r') as reader:
+    with open(self._layer_to_filename[digest], 'rb') as reader:
       return reader.read()
 
   def blob_size(self, digest):
@@ -742,7 +751,7 @@ def extract(image, tar):
   # Walk the layers, topmost first and add files.  If we've seen them in a
   # higher layer then we skip them
   for layer in image.diff_ids():
-    buf = cStringIO.StringIO(image.uncompressed_layer(layer))
+    buf = io.BytesIO(image.uncompressed_layer(layer))
     with tarfile.open(mode='r:', fileobj=buf) as layer_tar:
       for tarinfo in layer_tar:
         # If we see a whiteout file, then don't add anything to the tarball

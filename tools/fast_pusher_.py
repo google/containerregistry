@@ -18,7 +18,9 @@ proprietary, however, unlike {fast,docker}_puller the signature of this tool is
 compatible with docker_pusher.
 """
 
+from __future__ import absolute_import
 
+from __future__ import print_function
 
 import argparse
 import logging
@@ -35,6 +37,7 @@ from containerregistry.transport import retry
 from containerregistry.transport import transport_pool
 
 import httplib2
+from six.moves import zip  # pylint: disable=redefined-builtin
 
 
 parser = argparse.ArgumentParser(
@@ -82,15 +85,15 @@ def Tag(name, files):
         line = line.strip('\n')
         key, value = line.split(' ', 1)
         if key in format_args:
-          print('WARNING: Duplicate value for key "%s": '
-                'using "%s"' % (key, value))
+          print(('WARNING: Duplicate value for key "%s": '
+                 'using "%s"' % (key, value)))
         format_args[key] = value
 
   formatted_name = name.format(**format_args)
 
   if files:
-    print('{name} was resolved to {fname}'.format(
-        name=name, fname=formatted_name))
+    print(('{name} was resolved to {fname}'.format(
+        name=name, fname=formatted_name)))
 
   return docker_name.Tag(formatted_name)
 
@@ -141,7 +144,7 @@ def main():
   logging.info('Loading v2.2 image from disk ...')
   with v2_2_image.FromDisk(
       config,
-      zip(args.digest or [], args.layer or []),
+      list(zip(args.digest or [], args.layer or [])),
       legacy_base=args.tarball) as v2_2_img:
     # Resolve the appropriate credential to use based on the standard Docker
     # client logic.
@@ -164,8 +167,8 @@ def main():
           session.upload(v2_2_img)
           digest = v2_2_img.digest()
 
-        print('{name} was published with digest: {digest}'.format(
-            name=name, digest=digest))
+        print(('{name} was published with digest: {digest}'.format(
+            name=name, digest=digest)))
     # pylint: disable=broad-except
     except Exception as e:
       logging.fatal('Error publishing %s: %s', name, e)

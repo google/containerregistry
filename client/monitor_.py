@@ -13,19 +13,21 @@
 # limitations under the License.
 """This module contains utilities for monitoring client side calls."""
 
+from __future__ import absolute_import
+from __future__ import division
 
+from __future__ import print_function
 
 import abc
+import six
 
 
 
-class Context(object):
+class Context(six.with_metaclass(abc.ABCMeta, object)):
   """Interface for implementations of client monitoring context manager.
 
   All client operations are executed inside this context.
   """
-
-  __metaclass__ = abc.ABCMeta  # For enforcing that methods are overridden.
 
   @abc.abstractmethod
   def __init__(self, operation):
@@ -46,6 +48,7 @@ class Context(object):
 class Nop(Context):
   """Default implementation of Context that does nothing."""
 
+  # pylint: disable=useless-super-delegation
   def __init__(self, operation):
     super(Nop, self).__init__(operation)
 

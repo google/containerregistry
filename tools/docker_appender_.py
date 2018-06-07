@@ -13,7 +13,9 @@
 # limitations under the License.
 """This package appends a tarball to an image in a Docker Registry."""
 
+from __future__ import absolute_import
 
+from __future__ import print_function
 
 import argparse
 import logging
@@ -77,8 +79,8 @@ def main():
     session.upload(new_img)
     digest = new_img.digest()
 
-    print('{name} was published with digest: {digest}'.format(
-        name=dst, digest=digest))
+    print(('{name} was published with digest: {digest}'.format(
+        name=dst, digest=digest)))
 
 
 if __name__ == '__main__':

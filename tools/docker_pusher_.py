@@ -13,7 +13,9 @@
 # limitations under the License.
 """This package pushes images to a Docker Registry."""
 
+from __future__ import absolute_import
 
+from __future__ import print_function
 
 import argparse
 import logging
@@ -63,8 +65,8 @@ def Tag(name, files):
         line = line.strip('\n')
         key, value = line.split(' ', 1)
         if key in format_args:
-          print('WARNING: Duplicate value for key "%s": '
-                'using "%s"' % (key, value))
+          print(('WARNING: Duplicate value for key "%s": '
+                 'using "%s"' % (key, value)))
         format_args[key] = value
 
   formatted_name = name.format(**format_args)
@@ -113,8 +115,8 @@ def main():
           session.upload(v2_2_img)
           digest = v2_2_img.digest()
 
-        print('{name} was published with digest: {digest}'.format(
-            name=name, digest=digest))
+        print(('{name} was published with digest: {digest}'.format(
+            name=name, digest=digest)))
     # pylint: disable=broad-except
     except Exception as e:
       logging.fatal('Error publishing %s: %s', name, e)

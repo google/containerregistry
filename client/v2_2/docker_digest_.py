@@ -13,12 +13,15 @@
 # limitations under the License.
 """This package holds a handful of utilities for calculating digests."""
 
+from __future__ import absolute_import
+from __future__ import division
 
+from __future__ import print_function
 
 import hashlib
 
 
 
-def SHA256(content):
+def SHA256(content, prefix='sha256:'):
   """Return 'sha256:' + hex(sha256(content))."""
-  return 'sha256:' + hashlib.sha256(content).hexdigest()
+  return prefix + hashlib.sha256(content).hexdigest()

@@ -111,7 +111,7 @@ def main():
     sys.exit(1)
 
   try:
-    with tarfile.open(name=args.tarball, mode='w') as tar:
+    with tarfile.open(name=args.tarball, mode='w:') as tar:
       logging.info('Pulling manifest list from %r ...', name)
       with image_list.FromRegistry(name, creds, transport) as img_list:
         if img_list.exists():

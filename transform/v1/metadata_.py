@@ -13,11 +13,14 @@
 # limitations under the License.
 """This package manipulates Docker image metadata."""
 
+from __future__ import absolute_import
 
+from __future__ import print_function
 
 from collections import namedtuple
 import copy
 import os
+import six
 
 
 _OverridesT = namedtuple('OverridesT', [
@@ -73,7 +76,7 @@ def _DeepCopySkipNull(data):
   """Do a deep copy, skipping null entry."""
   if type(data) == type(dict()):  # pylint: disable=unidiomatic-typecheck
     return dict((_DeepCopySkipNull(k), _DeepCopySkipNull(v))
-                for k, v in data.iteritems()
+                for k, v in six.iteritems(data)
                 if v is not None)
   return copy.deepcopy(data)
 
@@ -148,14 +151,14 @@ def Override(data,
     # Build a dictionary of existing environment variables (used by _Resolve).
     environ_dict = _KeyValueToDict(output['config'].get('Env', []))
     # Merge in new environment variables, resolving references.
-    for k, v in options.env.iteritems():
+    for k, v in six.iteritems(options.env):
       # _Resolve handles scenarios like "PATH=$PATH:...".
       environ_dict[k] = _Resolve(v, environ_dict)
     output['config']['Env'] = _DictToKeyValue(environ_dict)
 
   if options.labels:
     label_dict = _KeyValueToDict(output['config'].get('Label', []))
-    for k, v in options.labels.iteritems():
+    for k, v in six.iteritems(options.labels):
       label_dict[k] = v
     output['config']['Label'] = _DictToKeyValue(label_dict)
 

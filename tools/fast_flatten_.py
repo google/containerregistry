@@ -13,7 +13,9 @@
 # limitations under the License.
 """This package flattens image metadata into a single tarball."""
 
+from __future__ import absolute_import
 
+from __future__ import print_function
 
 import argparse
 import logging
@@ -21,6 +23,7 @@ import tarfile
 
 from containerregistry.client.v2_2 import docker_image as v2_2_image
 from containerregistry.tools import logging_setup
+from six.moves import zip  # pylint: disable=redefined-builtin
 
 parser = argparse.ArgumentParser(description='Flatten container images.')
 
@@ -82,15 +85,16 @@ def main():
   else:
     config = args.config
 
-  layers = zip(args.digest or [], args.layer or [])
-  uncompressed_layers = zip(args.diff_id or [], args.uncompressed_layer or [])
+  layers = list(zip(args.digest or [], args.layer or []))
+  uncompressed_layers = list(
+      zip(args.diff_id or [], args.uncompressed_layer or []))
   logging.info('Loading v2.2 image From Disk ...')
   with v2_2_image.FromDisk(
       config_file=config,
       layers=layers,
       uncompressed_layers=uncompressed_layers,
       legacy_base=args.tarball) as v2_2_img:
-    with tarfile.open(args.filesystem, 'w') as tar:
+    with tarfile.open(args.filesystem, 'w:') as tar:
       v2_2_image.extract(v2_2_img, tar)
 
     with open(args.metadata, 'w') as f:

@@ -13,20 +13,21 @@
 # limitations under the License.
 """This package provides DockerImage for examining docker_build outputs."""
 
+from __future__ import absolute_import
+from __future__ import division
 
+from __future__ import print_function
 
 import binascii
-import hashlib
 import json
 import os
 
+from containerregistry.client.v2 import docker_digest
 from containerregistry.client.v2 import docker_image
 from containerregistry.client.v2 import util
 
 # _EMPTY_LAYER_TAR_ID is the sha256 of an empty tarball.
-_EMPTY_LAYER_TAR_ID = (
-    'sha256:'
-    'a3ed95caeb02ffe68cdd9fd84406680ae93d633cb16422d00e8a7c22955b46d4')
+_EMPTY_LAYER_TAR_ID = 'sha256:a3ed95caeb02ffe68cdd9fd84406680ae93d633cb16422d00e8a7c22955b46d4'  # pylint: disable=line-too-long
 
 
 class Layer(docker_image.DockerImage):
@@ -58,16 +59,16 @@ class Layer(docker_image.DockerImage):
 
     if tar_gz:
       self._blob = tar_gz
-      self._blob_sum = 'sha256:' + hashlib.sha256(self._blob).hexdigest()
+      self._blob_sum = docker_digest.SHA256(self._blob)
       v1_compat['throwaway'] = False
     else:
       self._blob_sum = _EMPTY_LAYER_TAR_ID
-      self._blob = ''
+      self._blob = b''
       v1_compat['throwaway'] = True
 
     manifest['fsLayers'].insert(0, {'blobSum': self._blob_sum})
     v1_compat['parent'] = v1_compat['id']
-    v1_compat['id'] = binascii.hexlify(os.urandom(32))
+    v1_compat['id'] = binascii.hexlify(os.urandom(32)).decode('utf8')
 
     config = v1_compat.get('config', {}) or {}
     envs = list(envs)

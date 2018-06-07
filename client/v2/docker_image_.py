@@ -13,13 +13,14 @@
 # limitations under the License.
 """This package provides DockerImage for examining docker_build outputs."""
 
+from __future__ import absolute_import
+from __future__ import division
 
+from __future__ import print_function
 
 import abc
-import cStringIO
 import gzip
-import hashlib
-import httplib
+import io
 import json
 import os
 import tarfile
@@ -28,17 +29,18 @@ from containerregistry.client import docker_creds
 from containerregistry.client import docker_name
 from containerregistry.client.v2 import docker_digest
 from containerregistry.client.v2 import docker_http
+
 import httplib2
+import six
+import six.moves.http_client
 
 
 class DigestMismatchedError(Exception):
   """Exception raised when a digest mismatch is encountered."""
 
 
-class DockerImage(object):
+class DockerImage(six.with_metaclass(abc.ABCMeta, object)):
   """Interface for implementations that interact with Docker images."""
-
-  __metaclass__ = abc.ABCMeta  # For enforcing that methods are overridden.
 
   def fs_layers(self):
     """The ordered collection of filesystem layers that comprise this image."""
@@ -77,14 +79,14 @@ class DockerImage(object):
       digest: the 'algo:digest' of the layer being addressed.
 
     Returns:
-      The raw blob string of the layer.
+      The raw blob bytes of the layer.
     """
 
   # pytype: enable=bad-return-type
 
   def uncompressed_blob(self, digest):
     """Same as blob() but uncompressed."""
-    buf = cStringIO.StringIO(self.blob(digest))
+    buf = io.BytesIO(self.blob(digest))
     f = gzip.GzipFile(mode='rb', fileobj=buf)
     return f.read()
 
@@ -127,7 +129,7 @@ class FromRegistry(DockerImage):
             scheme=docker_http.Scheme(self._name.registry),
             registry=self._name.registry,
             suffix=suffix),
-        accepted_codes=[httplib.OK])
+        accepted_codes=[six.moves.http_client.OK])
     if cache:
       self._response[suffix] = content
     return content
@@ -135,7 +137,7 @@ class FromRegistry(DockerImage):
   def _tags(self):
     # See //cloud/containers/registry/proto/v2/tags.proto
     # for the full response structure.
-    return json.loads(self._content('tags/list'))
+    return json.loads(self._content('tags/list').decode('utf8'))
 
   def tags(self):
     return self._tags().get('tags', [])
@@ -159,7 +161,7 @@ class FromRegistry(DockerImage):
       self.manifest(validate=False)
       return True
     except docker_http.V2DiagnosticException as err:
-      if err.status == httplib.NOT_FOUND:
+      if err.status == six.moves.http_client.NOT_FOUND:
         return False
       raise
 
@@ -167,10 +169,10 @@ class FromRegistry(DockerImage):
     """Override."""
     # GET server1/v2/<name>/manifests/<tag_or_digest>
     if isinstance(self._name, docker_name.Tag):
-      return self._content('manifests/' + self._name.tag)
+      return self._content('manifests/' + self._name.tag).decode('utf8')
     else:
       assert isinstance(self._name, docker_name.Digest)
-      c = self._content('manifests/' + self._name.digest)
+      c = self._content('manifests/' + self._name.digest).decode('utf8')
       # v2 removes signatures to compute the manifest digest, this is hard.
       computed = docker_digest.SignedManifestToSHA256(c)
       if validate and computed != self._name.digest:
@@ -192,7 +194,7 @@ class FromRegistry(DockerImage):
             registry=self._name.registry,
             suffix=suffix),
         method='HEAD',
-        accepted_codes=[httplib.OK])
+        accepted_codes=[six.moves.http_client.OK])
 
     return int(resp['content-length'])
 
@@ -201,7 +203,7 @@ class FromRegistry(DockerImage):
     """Override."""
     # GET server1/v2/<name>/blobs/<digest>
     c = self._content('blobs/' + digest, cache=False)
-    computed = 'sha256:' + hashlib.sha256(c).hexdigest()
+    computed = docker_digest.SHA256(c)
     if digest != computed:
       raise DigestMismatchedError(
           'The returned content\'s digest did not match its content-address, '
@@ -219,7 +221,7 @@ class FromRegistry(DockerImage):
         page_size=page_size)
 
     for _, content in self._transport.PaginatedRequest(
-        url, accepted_codes=[httplib.OK]):
+        url, accepted_codes=[six.moves.http_client.OK]):
       wrapper_object = json.loads(content)
 
       if 'repositories' not in wrapper_object:
@@ -273,7 +275,7 @@ def extract(image, tar):
   # Walk the layers, topmost first and add files.  If we've seen them in a
   # higher layer then we skip them.
   for layer in image.fs_layers():
-    buf = cStringIO.StringIO(image.blob(layer))
+    buf = io.BytesIO(image.blob(layer))
     with tarfile.open(mode='r:gz', fileobj=buf) as layer_tar:
       for member in layer_tar.getmembers():
         # If we see a whiteout file, then don't add anything to the tarball

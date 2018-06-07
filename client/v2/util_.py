@@ -13,7 +13,10 @@
 # limitations under the License.
 """This package holds a handful of utilities for manipulating manifests."""
 
+from __future__ import absolute_import
+from __future__ import division
 
+from __future__ import print_function
 
 import base64
 import json
@@ -41,23 +44,21 @@ def _JoseBase64UrlDecode(message):
   Returns:
     The decoded message.
   """
-  l = len(message)
+  bytes_msg = message.encode('utf8')
+  l = len(bytes_msg)
   if l % 4 == 0:
     pass
   elif l % 4 == 2:
-    message += '=='
+    bytes_msg += b'=='
   elif l % 4 == 3:
-    message += '='
+    bytes_msg += b'='
   else:
     raise BadManifestException('Malformed JOSE Base64 encoding.')
 
-  # Explicitly encode as ascii to work around issues passing unicode
-  # to base64 decoding.
-  return base64.urlsafe_b64decode(message.encode('ascii'))
+  return base64.urlsafe_b64decode(bytes_msg).decode('utf8')
 
 
-def _ExtractProtectedRegion(
-    signature):
+def _ExtractProtectedRegion(signature):
   """Extract the length and encoded suffix denoting the protected region."""
   protected = json.loads(_JoseBase64UrlDecode(signature['protected']))
   return (protected['formatLength'], protected['formatTail'])

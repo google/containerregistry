@@ -13,11 +13,15 @@
 # limitations under the License.
 """This package exposes credentials for talking to a Docker registry."""
 
+from __future__ import absolute_import
+from __future__ import division
 
+from __future__ import print_function
 
 import abc
 import base64
 import errno
+import io
 import json
 import logging
 import os
@@ -27,11 +31,11 @@ from containerregistry.client import docker_name
 import httplib2
 from oauth2client import client as oauth2client
 
+import six
 
-class Provider(object):
+
+class Provider(six.with_metaclass(abc.ABCMeta, object)):
   """Interface for providing User Credentials for use with a Docker Registry."""
-
-  __metaclass__ = abc.ABCMeta  # For enforcing that methods are overridden.
 
   # pytype: disable=bad-return-type
   @abc.abstractmethod
@@ -63,7 +67,7 @@ class SchemeProvider(Provider):
 
   def Get(self):
     """Gets the credential in a form suitable for an Authorization header."""
-    return '%s %s' % (self._scheme, self.suffix)
+    return u'%s %s' % (self._scheme, self.suffix)
 
 
 class Basic(SchemeProvider):
@@ -84,7 +88,9 @@ class Basic(SchemeProvider):
 
   @property
   def suffix(self):
-    return base64.b64encode(self.username + ':' + self.password)
+    u = self.username.encode('utf8')
+    p = self.password.encode('utf8')
+    return base64.b64encode(u + b':' + p).decode('utf8')
 
 
 _USERNAME = '_token'
@@ -159,9 +165,7 @@ class Helper(Basic):
     # Some keychains expect a scheme:
     # https://github.com/bazelbuild/rules_docker/issues/111
     stdout = p.communicate(input='https://' + self._registry)[0]
-
-    output = stdout.decode()
-    if output.strip() == _MAGIC_NOT_FOUND_MESSAGE:
+    if stdout.strip() == _MAGIC_NOT_FOUND_MESSAGE:
       # Use empty auth when no auth is found.
       logging.info('Credentials not found, falling back to anonymous auth.')
       return Anonymous().Get()
@@ -170,15 +174,13 @@ class Helper(Basic):
       raise Exception('Error fetching credential for %s, exit status: %d\n%s' %
                       (self._name, p.returncode, stdout))
 
-    blob = json.loads(output)
+    blob = json.loads(stdout)
     logging.info('Successfully obtained Docker credentials.')
     return Basic(blob['Username'], blob['Secret']).Get()
 
 
-class Keychain(object):
+class Keychain(six.with_metaclass(abc.ABCMeta, object)):
   """Interface for resolving an image reference to a credential."""
-
-  __metaclass__ = abc.ABCMeta  # For enforcing that methods are overridden.
 
   # pytype: disable=bad-return-type
   @abc.abstractmethod
@@ -235,7 +237,7 @@ class _DefaultKeychain(Keychain):
     logging.info('Loading Docker credentials for repository %r', str(name))
     config_file = os.path.join(_GetConfigDirectory(), 'config.json')
     try:
-      with open(config_file, 'r') as reader:
+      with io.open(config_file, u'r', encoding='utf8') as reader:
         cfg = json.loads(reader.read())
     except IOError:
       # If the file doesn't exist, fallback on anonymous auth.
@@ -257,7 +259,8 @@ class _DefaultKeychain(Keychain):
       if form % name.registry in auths:
         entry = auths[form % name.registry]
         if 'auth' in entry:
-          username, password = base64.b64decode(entry['auth']).split(':', 1)
+          decoded = base64.b64decode(entry['auth']).decode('utf8')
+          username, password = decoded.split(':', 1)
           return Basic(username, password)
         elif 'username' in entry and 'password' in entry:
           return Basic(entry['username'], entry['password'])

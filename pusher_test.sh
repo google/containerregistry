@@ -103,7 +103,8 @@ test_image gcr.io/containerregistry-releases/pusher-testing:latest
 test_image index.docker.io/googlecontainerregistrytesting/pusher-testing:latest
 
 # Test pushing to Bintray.io
-test_image googlecontainerregistrytesting-docker-test-repo.bintray.io/testing/pusher-testing:latest
+# TODO: "Server presented certificate that does not match host jfrog-int-docker-devops-registry.bintray.io"
+# test_image googlecontainerregistrytesting-docker-test-repo.bintray.io/testing/pusher-testing:latest
 
 # TODO(user): Enable once Quay supports v2.2
 # # Test pushing to Quay.io

@@ -13,18 +13,21 @@
 # limitations under the License.
 """This package facilitates HTTP/REST requests to the registry."""
 
+from __future__ import absolute_import
+from __future__ import division
 
+from __future__ import print_function
 
-import httplib
 import json
 import re
 import threading
-import urllib
 
 from containerregistry.client import docker_creds
 from containerregistry.client import docker_name
 from containerregistry.client.v2_2 import docker_creds as v2_2_creds
 import httplib2
+import six.moves.http_client
+import six.moves.urllib.parse
 
 # Options for docker_http.Transport actions
 PULL = 'pull'
@@ -35,8 +38,7 @@ CATALOG = 'catalog'
 ACTIONS = [PULL, PUSH, DELETE, CATALOG]
 
 MANIFEST_SCHEMA1_MIME = 'application/vnd.docker.distribution.manifest.v1+json'
-MANIFEST_SCHEMA1_SIGNED_MIME = (
-    'application/vnd.docker.distribution.manifest.v1+prettyjws')
+MANIFEST_SCHEMA1_SIGNED_MIME = 'application/vnd.docker.distribution.manifest.v1+prettyjws'  # pylint disable=line-too-long
 MANIFEST_SCHEMA2_MIME = 'application/vnd.docker.distribution.manifest.v2+json'
 MANIFEST_LIST_MIME = 'application/vnd.docker.distribution.manifest.list.v2+json'
 LAYER_MIME = 'application/vnd.docker.image.rootfs.diff.tar.gzip'
@@ -92,6 +94,7 @@ class Diagnostic(object):
 
 def _DiagnosticsFromContent(content):
   try:
+    content = content.decode('utf8')
     o = json.loads(content)
     return [Diagnostic(d) for d in o.get('errors', [])]
   except:  # pylint: disable=bare-except
@@ -213,12 +216,14 @@ class Transport(object):
         headers=headers)
 
     # We expect a www-authenticate challenge.
-    _CheckState(resp.status in [httplib.OK, httplib.UNAUTHORIZED],
-                'Unexpected response pinging the registry: {}\nBody: {}'.format(
-                    resp.status, content or '<empty>'))
+    _CheckState(
+        resp.status in [
+            six.moves.http_client.OK, six.moves.http_client.UNAUTHORIZED
+        ], 'Unexpected response pinging the registry: {}\nBody: {}'.format(
+            resp.status, content or '<empty>'))
 
     # The registry is authenticated iff we have an authentication challenge.
-    if resp.status == httplib.OK:
+    if resp.status == six.moves.http_client.OK:
       self._authentication = _ANONYMOUS
       self._service = 'none'
       self._realm = 'none'
@@ -283,19 +288,19 @@ class Transport(object):
     resp, content = self._transport.request(
         # 'realm' includes scheme and path
         '{realm}?{query}'.format(
-            realm=self._realm, query=urllib.urlencode(parameters)),
+            realm=self._realm,
+            query=six.moves.urllib.parse.urlencode(parameters)),
         'GET',
         body=None,
         headers=headers)
 
-    if resp.status != httplib.OK:
+    if resp.status != six.moves.http_client.OK:
       raise TokenRefreshException('Bad status during token exchange: %d\n%s' %
                                   (resp.status, content))
 
     wrapper_object = json.loads(content)
     token = wrapper_object.get('token') or wrapper_object.get('access_token')
-    _CheckState(token is not None,
-                'Malformed JSON response: %s' % content)
+    _CheckState(token is not None, 'Malformed JSON response: %s' % content)
 
     with self._lock:
       # We have successfully reauthenticated.
@@ -358,7 +363,7 @@ class Transport(object):
       resp, content = self._transport.request(
           url, method, body=body, headers=headers)
 
-      if resp.status != httplib.UNAUTHORIZED:
+      if resp.status != six.moves.http_client.UNAUTHORIZED:
         break
       elif retry:
         # On Unauthorized, refresh the credential and retry.
@@ -395,7 +400,7 @@ class Transport(object):
     while next_page:
       resp, content = self.Request(next_page, accepted_codes, method, body,
                                    content_type)
-      yield resp, content  # pytype: disable=bad-return-type
+      yield resp, content
 
       next_page = ParseNextLinkHeader(resp)
 

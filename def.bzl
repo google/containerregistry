@@ -88,5 +88,5 @@ py_library(
   native.git_repository(
       name = "subpar",
       remote = "https://github.com/google/subpar",
-      commit = "7e12cc130eb8f09c8cb02c3585a91a4043753c56",
+      commit = "07ff5feb7c7b113eea593eb6ec50b51099cf0261",
   )
