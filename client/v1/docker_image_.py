@@ -108,6 +108,10 @@ class DockerImage(six.with_metaclass(abc.ABCMeta, object)):
     unzipped = f.read()
     return unzipped
 
+  def diff_id(self, digest):
+    """diff_id only exist in schema v22."""
+    return None
+
   # pytype: disable=bad-return-type
   @abc.abstractmethod
   def ancestry(self, layer_id):

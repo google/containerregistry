@@ -37,8 +37,12 @@ import six
 
 
 def _diff_id(v1_img, blob):
-  unzipped = v1_img.uncompressed_layer(blob)
-  return docker_digest.SHA256(unzipped)
+  try:
+    unzipped = v1_img.uncompressed_layer(blob)
+    return docker_digest.SHA256(unzipped)
+  except IOError:
+    # For foreign layers, we do not have the layer.tar
+    return v1_img.diff_id(blob)
 
 
 def multi_image_tarball(
@@ -72,6 +76,8 @@ def multi_image_tarball(
   #           ancestry ordering.
   #  - RepoTags: the list of tags to apply to this image once it
   #             is loaded.
+  #  - LayerSources: optionally declare foreign layers declared in
+  #                  the base image
   manifests = []
 
   for (tag, image) in six.iteritems(tag_to_image):
@@ -89,7 +95,7 @@ def multi_image_tarball(
       tag_to_v1_image[tag] = v1_img
 
     # Add the manifests entry for this image.
-    manifests.append({
+    manifest = {
         'Config':
             digest + '.json',
         'Layers': [
@@ -100,7 +106,14 @@ def multi_image_tarball(
             if _diff_id(v1_img, layer_id) in diffs
         ],
         'RepoTags': [str(tag)]
-    })
+    }
+
+    input_manifest = json.loads(image.manifest())
+
+    if 'LayerSources' in input_manifest:
+      manifest['LayerSources'] = input_manifest['LayerSources']
+
+    manifests.append(manifest)
 
   # v2.2 tarballs are a superset of v1 tarballs, so delegate
   # to v1 to save itself.

@@ -155,6 +155,9 @@ def Override(data,
   output['architecture'] = architecture
   output['os'] = operating_system
 
+  if 'os.version' in defaults:
+    output['os.version'] = defaults['os.version']
+
   output['config'] = defaults.get('config', {})
 
   # pytype: disable=attribute-error
