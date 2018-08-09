@@ -305,14 +305,14 @@ class Push(object):
         with child:
           self.upload(child, use_digest=True)
     elif self._threads == 1:
-      for digest in image.blob_set():
+      for digest in image.distributable_blob_set():
         self._upload_one(image, digest)
     else:
       with concurrent.futures.ThreadPoolExecutor(
           max_workers=self._threads) as executor:
         future_to_params = {
             executor.submit(self._upload_one, image, digest): (image, digest)
-            for digest in image.blob_set()
+            for digest in image.distributable_blob_set()
         }
         for future in concurrent.futures.as_completed(future_to_params):
           future.result()

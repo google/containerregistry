@@ -42,11 +42,15 @@ MANIFEST_SCHEMA1_SIGNED_MIME = 'application/vnd.docker.distribution.manifest.v1+
 MANIFEST_SCHEMA2_MIME = 'application/vnd.docker.distribution.manifest.v2+json'
 MANIFEST_LIST_MIME = 'application/vnd.docker.distribution.manifest.list.v2+json'
 LAYER_MIME = 'application/vnd.docker.image.rootfs.diff.tar.gzip'
+FOREIGN_LAYER_MIME = 'application/vnd.docker.image.rootfs.foreign.diff.tar.gzip'
 CONFIG_JSON_MIME = 'application/vnd.docker.container.image.v1+json'
 
 OCI_MANIFEST_MIME = 'application/vnd.oci.image.manifest.v1+json'
 OCI_IMAGE_INDEX_MIME = 'application/vnd.oci.image.index.v1+json'
-OCI_LAYER_MIME = 'application/vnd.oci.image.layer.v1.tar+gzip'
+OCI_LAYER_MIME = 'application/vnd.oci.image.layer.v1.tar'
+OCI_GZIP_LAYER_MIME = 'application/vnd.oci.image.layer.v1.tar+gzip'
+OCI_NONDISTRIBUTABLE_LAYER_MIME = 'application/vnd.oci.image.layer.nondistributable.v1.tar'  # pylint disable=line-too-long
+OCI_NONDISTRIBUTABLE_GZIP_LAYER_MIME = 'application/vnd.oci.image.layer.nondistributable.v1.tar+gzip'  # pylint disable=line-too-long
 OCI_CONFIG_JSON_MIME = 'application/vnd.oci.image.config.v1+json'
 
 MANIFEST_SCHEMA1_MIMES = [MANIFEST_SCHEMA1_MIME, MANIFEST_SCHEMA1_SIGNED_MIME]
@@ -58,6 +62,12 @@ SUPPORTED_MANIFEST_MIMES = [OCI_MANIFEST_MIME, MANIFEST_SCHEMA2_MIME]
 
 # OCI Image Index and Manifest List are compatible formats.
 MANIFEST_LIST_MIMES = [OCI_IMAGE_INDEX_MIME, MANIFEST_LIST_MIME]
+
+# Docker & OCI layer mime types indicating foreign/non-distributable layers.
+NON_DISTRIBUTABLE_LAYER_MIMES = [
+    FOREIGN_LAYER_MIME, OCI_NONDISTRIBUTABLE_LAYER_MIME,
+    OCI_NONDISTRIBUTABLE_GZIP_LAYER_MIME
+]
 
 
 class Diagnostic(object):

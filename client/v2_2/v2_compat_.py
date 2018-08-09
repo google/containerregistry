@@ -198,7 +198,7 @@ class V2FromV22(v2_image.DockerImage):
     fs_layers = []
     v1_histories = []
     for v1_layer_index, history in enumerate(histories):
-      digest, v2_layer_index = self._GetSchema1LayerDigest(
+      digest, media_type, v2_layer_index = self._GetSchema1LayerDigest(
           history, layers, v1_layer_index, v2_layer_index)
 
       if v1_layer_index != layer_count - 1:
@@ -209,7 +209,7 @@ class V2FromV22(v2_image.DockerImage):
         v1_compatibility = self._BuildV1CompatibilityForTopLayer(
             layer_id, parent, history, config)
       parent = layer_id
-      fs_layers = [{'blobSum': digest}] + fs_layers
+      fs_layers = [{'blobSum': digest, 'mediaType': media_type}] + fs_layers
       v1_histories = [{'v1Compatibility': v1_compatibility}] + v1_histories
 
     manifest_schema1 = {
@@ -281,9 +281,13 @@ class V2FromV22(v2_image.DockerImage):
       self, history, layers,
       v1_layer_index, v2_layer_index):
     if 'empty_layer' in history:
-      return (EMPTY_TAR_DIGEST, v2_layer_index)
+      return (EMPTY_TAR_DIGEST, docker_http.LAYER_MIME, v2_layer_index)
     else:
-      return (layers[v2_layer_index]['digest'], v2_layer_index + 1)
+      return (
+          layers[v2_layer_index]['digest'],
+          layers[v2_layer_index]['mediaType'],
+          v2_layer_index + 1
+      )
 
   def manifest(self):
     """Override."""
@@ -295,6 +299,10 @@ class V2FromV22(v2_image.DockerImage):
       # See comment in blob().
       return super(V2FromV22, self).uncompressed_blob(EMPTY_TAR_DIGEST)
     return self._v2_2_image.uncompressed_blob(digest)
+
+  def diff_id(self, digest):
+    """Gets v22 diff_id."""
+    return self._v2_2_image.digest_to_diff_id(digest)
 
   def blob(self, digest):
     """Override."""

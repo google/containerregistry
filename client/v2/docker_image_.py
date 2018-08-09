@@ -90,6 +90,10 @@ class DockerImage(six.with_metaclass(abc.ABCMeta, object)):
     f = gzip.GzipFile(mode='rb', fileobj=buf)
     return f.read()
 
+  def diff_id(self, digest):
+    """diff_id only exist in schema v22."""
+    return None
+
   # __enter__ and __exit__ allow use as a context manager.
   @abc.abstractmethod
   def __enter__(self):
