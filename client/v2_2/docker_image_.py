@@ -703,14 +703,11 @@ class FromDisk(DockerImage):
       # Manifest files found in tar files are actually a json list.
       # This code iterates through that collection and appends any foreign
       # layers described in the order found in the config file.
-      foreign_layers_list = json.loads(self._foreign_layers_manifest)
-      for foreign_layers in foreign_layers_list:
-        if 'LayerSources' in foreign_layers:
-          config = json.loads(self._config)
-          layer_sources = foreign_layers['LayerSources']
-          for diff_id in config['rootfs']['diff_ids']:
-            if diff_id in layer_sources:
-              base_layers.append(layer_sources[diff_id])
+      manifest = json.loads(self._foreign_layers_manifest)
+      if 'layers' in manifest:
+        for layer in manifest['layers']:
+          if layer['mediaType'] == docker_http.FOREIGN_LAYER_MIME:
+            base_layers.append(layer)
 
     # TODO(user): Update mimes here for oci_compat.
     self._manifest = json.dumps(

@@ -29,6 +29,7 @@ from containerregistry.client.v1 import docker_image as v1_image
 from containerregistry.client.v1 import save as v1_save
 from containerregistry.client.v2 import v1_compat
 from containerregistry.client.v2_2 import docker_digest
+from containerregistry.client.v2_2 import docker_http
 from containerregistry.client.v2_2 import docker_image as v2_2_image
 from containerregistry.client.v2_2 import v2_compat
 
@@ -38,11 +39,10 @@ import six
 
 def _diff_id(v1_img, blob):
   try:
+    return v1_img.diff_id(blob)
+  except ValueError:
     unzipped = v1_img.uncompressed_layer(blob)
     return docker_digest.SHA256(unzipped)
-  except IOError:
-    # For foreign layers, we do not have the layer.tar
-    return v1_img.diff_id(blob)
 
 
 def multi_image_tarball(
@@ -76,8 +76,6 @@ def multi_image_tarball(
   #           ancestry ordering.
   #  - RepoTags: the list of tags to apply to this image once it
   #             is loaded.
-  #  - LayerSources: optionally declare foreign layers declared in
-  #                  the base image
   manifests = []
 
   for (tag, image) in six.iteritems(tag_to_image):
@@ -108,10 +106,16 @@ def multi_image_tarball(
         'RepoTags': [str(tag)]
     }
 
+    layer_sources = {}
     input_manifest = json.loads(image.manifest())
+    input_layers = input_manifest['layers']
 
-    if 'LayerSources' in input_manifest:
-      manifest['LayerSources'] = input_manifest['LayerSources']
+    for i, diff_id in enumerate(diffs):
+      if input_layers[i]['mediaType'] == docker_http.FOREIGN_LAYER_MIME:
+        layer_sources[diff_id] = input_layers[i]
+
+    if layer_sources:
+      manifest['LayerSources'] = layer_sources
 
     manifests.append(manifest)
 
