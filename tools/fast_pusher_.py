@@ -56,6 +56,12 @@ parser.add_argument(
     help='The path to the file storing the image config.')
 
 parser.add_argument(
+    '--manifest',
+    action='store',
+    required=False,
+    help='The path to the file storing the image manifest.')
+
+parser.add_argument(
     '--digest',
     action='append',
     help='The list of layer digest filenames in order.')
@@ -124,6 +130,7 @@ def main():
   # If config is specified, use that.  Otherwise, fallback on reading
   # the config from the tarball.
   config = args.config
+  manifest = args.manifest
   if args.config:
     logging.info('Reading config from %r', args.config)
     with open(args.config, 'r') as reader:
@@ -132,6 +139,10 @@ def main():
     logging.info('Reading config from tarball %r', args.tarball)
     with v2_2_image.FromTarball(args.tarball) as base:
       config = base.config_file()
+
+  if args.manifest:
+    with open(args.manifest, 'r') as reader:
+      manifest = reader.read()
 
   if len(args.digest or []) != len(args.layer or []):
     logging.fatal('--digest and --layer must have matching lengths.')
@@ -145,7 +156,8 @@ def main():
   with v2_2_image.FromDisk(
       config,
       list(zip(args.digest or [], args.layer or [])),
-      legacy_base=args.tarball) as v2_2_img:
+      legacy_base=args.tarball,
+      foreign_layers_manifest=manifest) as v2_2_img:
     # Resolve the appropriate credential to use based on the standard Docker
     # client logic.
     try:
