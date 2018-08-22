@@ -52,3 +52,7 @@ from containerregistry.tools import fast_pusher_
 setattr(x, 'fast_pusher', fast_pusher_)
 
 
+from containerregistry.tools import image_digest_
+setattr(x, 'image_digest', image_digest_)
+
+

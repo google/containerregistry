@@ -1,0 +1,33 @@
+steps:
+# Build the pusher PAR file
+- name: gcr.io/cloud-builders/bazel
+  args: [
+    'build', '//:pusher.par',
+    '--strategy', 'PythonCompile=standalone'
+  ]
+
+# Upload the pusher PAR file to a public GCS bucket
+- name: gcr.io/cloud-builders/gsutil
+  args: [
+    'cp',
+    'bazel-bin/pusher.par',
+    'gs://containerregistry-releases/$TAG_NAME/pusher.par'
+  ]
+
+# Build the digest PAR file
+- name: gcr.io/cloud-builders/bazel
+  args: [
+    'build', '//:digest.par',
+    '--strategy', 'PythonCompile=standalone'
+  ]
+
+# Upload the digest PAR file to a public GCS bucket
+- name: gcr.io/cloud-builders/gsutil
+  args: [
+    'cp',
+    'bazel-bin/digest.par',
+    'gs://containerregistry-releases/$TAG_NAME/digest.par'
+  ]
+
+# We produce no Docker images.
+images: []

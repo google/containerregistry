@@ -72,6 +72,14 @@ par_binary(
     deps = [":containerregistry"],
 )
 
+par_binary(
+    name = "digest",
+    srcs = ["tools/image_digest_.py"],
+    main = "tools/image_digest_.py",
+    visibility = ["//visibility:public"],
+    deps = [":containerregistry"],
+)
+
 sh_test(
     name = "appender_test",
     size = "large",
@@ -98,6 +106,17 @@ sh_test(
     srcs = ["pusher_test.sh"],
     data = [
         "testenv.sh",
+        ":pusher.par",
+    ],
+)
+
+sh_test(
+    name = "digest_test",
+    size = "large",
+    srcs = ["digest_test.sh"],
+    data = [
+        "testenv.sh",
+        ":digest.par",
         ":pusher.par",
     ],
 )
