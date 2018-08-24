@@ -1,7 +1,21 @@
 <table><tr>
-<td><a href="https://gcr.io"><img src="https://avatars2.githubusercontent.com/u/1342004?s=200&v=4" height="120"/></a></td>	
-<td><a href="https://gcr.io"><img src="https://avatars2.githubusercontent.com/u/21046548?s=400&v=4" height="120"/></a></td>	
-<td><a href="https://bazel.build"><img src="https://bazel.build/images/bazel-icon.svg" height="120"/></a></td>	
+<td>
+  <a href="https://gcr.io">
+    <img src="https://avatars2.githubusercontent.com/u/1342004?s=200&v=4"
+         height="120"/>
+  </a>
+</td>
+<td>
+  <a href="https://gcr.io">
+    <img src="https://avatars2.githubusercontent.com/u/21046548?s=400&v=4"
+         height="120"/>
+  </a>
+</td>
+<td>
+  <a href="https://bazel.build">
+    <img src="https://bazel.build/images/bazel-icon.svg" height="120"/>
+  </a>
+</td>
 </tr></table>
 
 # `containerregistry`
@@ -9,7 +23,8 @@
 
 A set of Python libraries and tools for interacting with a Docker Registry.
 
-Bazel users see <a href="https://github.com/bazelbuild/rules_docker">rules_docker</a>, which relies heavily on these tools.
+Bazel users see <a href="https://github.com/bazelbuild/rules_docker">
+  rules_docker</a>, which relies heavily on these tools.
 
 ## puller.par
 
@@ -139,6 +154,33 @@ optional arguments:
   --tarball TARBALL     The tarball to append.
   --dst-image DST_IMAGE
                         The name of the new image.
+  --stderrthreshold STDERRTHRESHOLD
+                        Write log events at or above this level to stderr.
+
+```
+
+## digester.par
+
+```sh
+$ bazel run @containerregistry//:digester.par -- --help
+```
+
+```
+usage: digester.par [-h] [--tarball TARBALL] --output-digest OUTPUT_DIGEST
+                    [--config CONFIG] [--digest DIGEST] [--layer LAYER] [--oci]
+                    [--stderrthreshold STDERRTHRESHOLD]
+
+Calculate digest for a container image.
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --tarball TARBALL     An optional legacy base image tarball.
+  --output-digest OUTPUT_DIGEST
+                        Filename to store digest in.
+  --config CONFIG       The path to the file storing the image config.
+  --digest DIGEST       The list of layer digest filenames in order.
+  --layer LAYER         The list of layer filenames in order.
+  --oci                 Image has an OCI Manifest.
   --stderrthreshold STDERRTHRESHOLD
                         Write log events at or above this level to stderr.
 
