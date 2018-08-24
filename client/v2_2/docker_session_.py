@@ -205,7 +205,9 @@ class Push(object):
     # repository that is known to contain this blob and skips the upload.
     self._patch_upload(image, digest)
 
-  def _remote_tag_digest(self):
+  def _remote_tag_digest(
+      self, image
+      ):
     """Check the remote for the given manifest by digest."""
 
     # GET the tag we're pushing
@@ -216,7 +218,8 @@ class Push(object):
         method='GET',
         accepted_codes=[
             six.moves.http_client.OK, six.moves.http_client.NOT_FOUND
-        ])
+        ],
+        accepted_mimes=[image.media_type()])
 
     if resp.status == six.moves.http_client.NOT_FOUND:  # pytype: disable=attribute-error
       return None
@@ -293,7 +296,7 @@ class Push(object):
     # checks (they must exist).
     if self._manifest_exists(image):
       if isinstance(self._name, docker_name.Tag):
-        if self._remote_tag_digest() == image.digest():
+        if self._remote_tag_digest(image) == image.digest():
           logging.info('Tag points to the right manifest, skipping push.')
           return
         logging.info('Manifest exists, skipping blob uploads and pushing tag.')
