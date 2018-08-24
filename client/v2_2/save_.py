@@ -101,7 +101,8 @@ def multi_image_tarball(
             # We don't just exclude the empty tar because we leave its diff_id
             # in the set when coming through v2_compat.V22FromV2
             for layer_id in reversed(v1_img.ancestry(v1_img.top()))
-            if _diff_id(v1_img, layer_id) in diffs
+            if _diff_id(v1_img, layer_id) in diffs and
+            not json.loads(v1_img.json(layer_id)).get('throwaway')
         ],
         'RepoTags': [str(tag)]
     }
@@ -110,9 +111,10 @@ def multi_image_tarball(
     input_manifest = json.loads(image.manifest())
     input_layers = input_manifest['layers']
 
-    for i, diff_id in enumerate(diffs):
-      if input_layers[i]['mediaType'] == docker_http.FOREIGN_LAYER_MIME:
-        layer_sources[diff_id] = input_layers[i]
+    for input_layer in input_layers:
+      if input_layer['mediaType'] == docker_http.FOREIGN_LAYER_MIME:
+        diff_id = image.digest_to_diff_id(input_layer['digest'])
+        layer_sources[diff_id] = input_layer
 
     if layer_sources:
       manifest['LayerSources'] = layer_sources

@@ -60,7 +60,7 @@ def multi_image_tarball(
 
     for layer_id in image.ancestry(image.top()):
       # Add each layer_id exactly once.
-      if layer_id in seen:
+      if layer_id in seen or json.loads(image.json(layer_id)).get('throwaway'):
         continue
       seen.add(layer_id)
 
