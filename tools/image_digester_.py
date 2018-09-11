@@ -51,7 +51,6 @@ parser.add_argument(
 parser.add_argument(
     '--manifest',
     action='store',
-    required=False,
     help='The path to the file storing the image manifest.')
 
 parser.add_argument(
