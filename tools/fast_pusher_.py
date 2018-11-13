@@ -44,7 +44,8 @@ parser = argparse.ArgumentParser(
     description='Push images to a Docker Registry, faaaaaast.')
 
 parser.add_argument(
-    '--name', action='store', help=('The name of the docker image to push.'))
+    '--name', action='store', help='The name of the docker image to push.',
+    required=True)
 
 # The name of this flag was chosen for compatibility with docker_pusher.py
 parser.add_argument(
@@ -108,10 +109,6 @@ def main():
   logging_setup.DefineCommandLineArgs(parser)
   args = parser.parse_args()
   logging_setup.Init(args=args)
-
-  if not args.name:
-    logging.fatal('--name is a required arguments.')
-    sys.exit(1)
 
   # This library can support push-by-digest, but the likelihood of a user
   # correctly providing us with the digest without using this library

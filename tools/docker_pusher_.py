@@ -38,10 +38,12 @@ parser = argparse.ArgumentParser(
     description='Push images to a Docker Registry.')
 
 parser.add_argument(
-    '--name', action='store', help=('The name of the docker image to push.'))
+    '--name', action='store', help='The name of the docker image to push.',
+    required=True)
 
 parser.add_argument(
-    '--tarball', action='store', help='Where to load the image tarball.')
+    '--tarball', action='store', help='Where to load the image tarball.',
+    required=True)
 
 parser.add_argument(
     '--stamp-info-file',
@@ -78,10 +80,6 @@ def main():
   logging_setup.DefineCommandLineArgs(parser)
   args = parser.parse_args()
   logging_setup.Init(args=args)
-
-  if not args.name or not args.tarball:
-    logging.fatal('--name and --tarball are required arguments.')
-    sys.exit(1)
 
   retry_factory = retry.Factory()
   retry_factory = retry_factory.WithSourceTransportCallable(httplib2.Http)

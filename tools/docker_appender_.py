@@ -37,12 +37,15 @@ parser = argparse.ArgumentParser(
 parser.add_argument(
     '--src-image',
     action='store',
-    help=('The name of the docker image to append to.'))
+    help='The name of the docker image to append to.',
+    required=True)
 
-parser.add_argument('--tarball', action='store', help='The tarball to append.')
+parser.add_argument('--tarball', action='store', help='The tarball to append.',
+                    required=True)
 
 parser.add_argument(
-    '--dst-image', action='store', help='The name of the new image.')
+    '--dst-image', action='store', help='The name of the new image.',
+    required=True)
 
 _THREADS = 8
 
@@ -51,10 +54,6 @@ def main():
   logging_setup.DefineCommandLineArgs(parser)
   args = parser.parse_args()
   logging_setup.Init(args=args)
-
-  if not args.src_image or not args.tarball or not args.dst_image:
-    raise Exception('--src-image, --dst-image and --tarball are required '
-                    'arguments.')
 
   transport = transport_pool.Http(httplib2.Http, size=_THREADS)
 

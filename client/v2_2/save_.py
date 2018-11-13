@@ -146,12 +146,14 @@ def fast(image, directory,
 
   After calling this, the following filesystem will exist:
     directory/
-      config.json  <-- only *.json, the image's config
-      001.tar.gz   <-- the first layer's .tar.gz filesystem delta
-      001.sha256   <-- the sha256 of 1.tar.gz with a "sha256:" prefix.
+      config.json   <-- only *.json, the image's config
+      digest        <-- sha256 digest of the image's manifest
+      manifest.json <-- the image's manifest
+      001.tar.gz    <-- the first layer's .tar.gz filesystem delta
+      001.sha256    <-- the sha256 of 1.tar.gz with a "sha256:" prefix.
       ...
-      N.tar.gz     <-- the Nth layer's .tar.gz filesystem delta
-      N.sha256     <-- the sha256 of N.tar.gz with a "sha256:" prefix.
+      N.tar.gz      <-- the Nth layer's .tar.gz filesystem delta
+      N.sha256      <-- the sha256 of N.tar.gz with a "sha256:" prefix.
 
   We pad layer indices to only 3 digits because of a known ceiling on the number
   of filesystem layers Docker supports.
@@ -179,6 +181,12 @@ def fast(image, directory,
                         lambda unused: image.config_file().encode('utf8'),
                         'unused')
     future_to_params[f] = config_file
+
+    executor.submit(write_file, os.path.join(directory, 'digest'),
+                    lambda unused: image.digest(), 'unused')
+    executor.submit(write_file, os.path.join(directory, 'manifest.json'),
+                    lambda unused: image.manifest().encode('utf8'),
+                    'unused')
 
     idx = 0
     layers = []
@@ -214,12 +222,14 @@ def uncompressed(image,
 
   After calling this, the following filesystem will exist:
     directory/
-      config.json  <-- only *.json, the image's config
-      001.tar      <-- the first layer's .tar filesystem delta
-      001.sha256   <-- the sha256 of 001.tar with a "sha256:" prefix.
+      config.json   <-- only *.json, the image's config
+      digest        <-- sha256 digest of the image's manifest
+      manifest.json <-- the image's manifest
+      001.tar       <-- the first layer's .tar filesystem delta
+      001.sha256    <-- the sha256 of 001.tar with a "sha256:" prefix.
       ...
-      NNN.tar      <-- the NNNth layer's .tar filesystem delta
-      NNN.sha256   <-- the sha256 of NNN.tar with a "sha256:" prefix.
+      NNN.tar       <-- the NNNth layer's .tar filesystem delta
+      NNN.sha256    <-- the sha256 of NNN.tar with a "sha256:" prefix.
 
   We pad layer indices to only 3 digits because of a known ceiling on the number
   of filesystem layers Docker supports.
@@ -247,6 +257,12 @@ def uncompressed(image,
                         lambda unused: image.config_file().encode('utf8'),
                         'unused')
     future_to_params[f] = config_file
+
+    executor.submit(write_file, os.path.join(directory, 'digest'),
+                    lambda unused: image.digest(), 'unused')
+    executor.submit(write_file, os.path.join(directory, 'manifest.json'),
+                    lambda unused: image.manifest().encode('utf8'),
+                    'unused')
 
     idx = 0
     layers = []
