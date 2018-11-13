@@ -33,7 +33,7 @@ $ bazel run @containerregistry//:puller.par -- --help
 ```
 
 ```
-usage: puller.par [-h] [--name NAME] [--directory DIRECTORY]
+usage: puller.par [-h] --name NAME --directory DIRECTORY [--platform PLATFORM]
                   [--stderrthreshold STDERRTHRESHOLD]
 
 Pull images from a Docker Registry, faaaaast.
@@ -44,6 +44,8 @@ optional arguments:
                         Supports fully-qualified tag or digest references.
   --directory DIRECTORY
                         Where to save the image's files.
+  --platform PLATFORM   Which platform image to pull for multi-platform
+                        manifest lists. Formatted as os/arch.
   --stderrthreshold STDERRTHRESHOLD
                         Write log events at or above this level to stderr.
 ```
@@ -55,8 +57,8 @@ $ bazel run @containerregistry//:pusher.par -- --help
 ```
 
 ```
-usage: pusher.par [-h] [--name NAME] [--tarball TARBALL] [--config CONFIG]
-                  [--digest DIGEST] [--layer LAYER]
+usage: pusher.par [-h] --name NAME [--tarball TARBALL] [--config CONFIG]
+                  [--manifest MANIFEST] [--digest DIGEST] [--layer LAYER]
                   [--stamp-info-file STAMP_INFO_FILE] [--oci]
                   [--stderrthreshold STDERRTHRESHOLD]
 
@@ -67,6 +69,7 @@ optional arguments:
   --name NAME           The name of the docker image to push.
   --tarball TARBALL     An optional legacy base image tarball.
   --config CONFIG       The path to the file storing the image config.
+  --manifest MANIFEST   The path to the file storing the image manifest.
   --digest DIGEST       The list of layer digest filenames in order.
   --layer LAYER         The list of layer filenames in order.
   --stamp-info-file STAMP_INFO_FILE
@@ -84,9 +87,8 @@ $ bazel run @containerregistry//:importer.par -- --help
 ```
 
 ```
-usage: importer.par [-h] [--tarball TARBALL] [--format {tar,tar.gz}]
-                    [--directory DIRECTORY]
-                    [--stderrthreshold STDERRTHRESHOLD]
+usage: importer.par [-h] --tarball TARBALL [--format {tar,tar.gz}] --directory
+                    DIRECTORY [--stderrthreshold STDERRTHRESHOLD]
 
 Import images from a tarball into our faaaaaast format.
 
@@ -141,9 +143,8 @@ $ bazel run @containerregistry//:appender.par -- --help
 ```
 
 ```
-usage: appender.par [-h] [--src-image SRC_IMAGE] [--tarball TARBALL]
-                    [--dst-image DST_IMAGE]
-                    [--stderrthreshold STDERRTHRESHOLD]
+usage: appender.par [-h] --src-image SRC_IMAGE --tarball TARBALL --dst-image
+                    DST_IMAGE [--stderrthreshold STDERRTHRESHOLD]
 
 Append tarballs to an image in a Docker Registry.
 
@@ -156,7 +157,6 @@ optional arguments:
                         The name of the new image.
   --stderrthreshold STDERRTHRESHOLD
                         Write log events at or above this level to stderr.
-
 ```
 
 ## digester.par
@@ -167,7 +167,8 @@ $ bazel run @containerregistry//:digester.par -- --help
 
 ```
 usage: digester.par [-h] [--tarball TARBALL] --output-digest OUTPUT_DIGEST
-                    [--config CONFIG] [--digest DIGEST] [--layer LAYER] [--oci]
+                    [--config CONFIG] [--manifest MANIFEST] [--digest DIGEST]
+                    [--layer LAYER] [--oci]
                     [--stderrthreshold STDERRTHRESHOLD]
 
 Calculate digest for a container image.
@@ -178,10 +179,10 @@ optional arguments:
   --output-digest OUTPUT_DIGEST
                         Filename to store digest in.
   --config CONFIG       The path to the file storing the image config.
+  --manifest MANIFEST   The path to the file storing the image manifest.
   --digest DIGEST       The list of layer digest filenames in order.
   --layer LAYER         The list of layer filenames in order.
   --oci                 Image has an OCI Manifest.
   --stderrthreshold STDERRTHRESHOLD
                         Write log events at or above this level to stderr.
-
 ```

@@ -244,7 +244,7 @@ class Push(object):
         content_type=image.media_type(),
         accepted_codes=[
             six.moves.http_client.OK, six.moves.http_client.CREATED,
-            six.moves.http_client.ACCEPTED
+            six.moves.http_client.ACCEPTED  # pytype: disable=wrong-arg-types
         ])
 
   def _start_upload(self,

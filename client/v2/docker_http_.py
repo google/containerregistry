@@ -73,6 +73,13 @@ class Diagnostic(object):
 
 
 def _DiagnosticsFromContent(content):
+  """Extract and return the diagnostics from content."""
+  try:
+    content = content.decode('utf8')
+  except:  # pylint: disable=bare-except
+    # Assume it's already decoded. Defensive coding for old py2 habits that
+    # are hard to break. Passing does not make the problem worse.
+    pass
   try:
     o = json.loads(content)
     return [Diagnostic(d) for d in o.get('errors', [])]
@@ -277,6 +284,12 @@ class Transport(object):
       raise TokenRefreshException('Bad status during token exchange: %d\n%s' %
                                   (resp.status, content))
 
+    try:
+      content = content.decode('utf8')
+    except:  # pylint: disable=bare-except
+      # Assume it's already decoded. Defensive coding for old py2 habits that
+      # are hard to break. Passing does not make the problem worse.
+      pass
     wrapper_object = json.loads(content)
     token = wrapper_object.get('token') or wrapper_object.get('access_token')
     _CheckState(token is not None,

@@ -17,7 +17,7 @@
 # Unit tests for puller.par
 
 # Trick to chase the symlink before the docker build.
-cp puller.par puller2.par
+cp -f puller.par puller2.par
 
 # Test pulling an image by just invoking the puller
 function test_puller() {
@@ -25,6 +25,26 @@ function test_puller() {
 
   # Test it in our current environment.
   puller.par --name="${image}" --directory=/tmp/
+}
+
+test_puller_multiplatform() {
+  local image=$1
+  local platform=$2
+  local expected_digest=$3
+
+  local tmpdir=$(mktemp -d)
+
+  echo "TESTING: ${image} platform ${platform}"
+
+  puller.par --name="${image}" --directory="${tmpdir}" --platform="${platform}"
+
+  digest=$(cat "${tmpdir}/digest")
+  rm -rf "${tmpdir}"
+
+  if [[ "${digest}" != "${expected_digest}" ]]; then
+    echo "Expected digest '${expected_digest}', got '${digest}'"
+    return 1
+  fi
 }
 
 # Test pulling an image from inside a docker container with a
@@ -87,5 +107,12 @@ test_image gcr.io/google-containers/pause@sha256:9ce5316f9752b8347484ab0f6778573
 
 # Test pulling manifest list by digest, this should resolve to amd64/linux
 test_image index.docker.io/library/busybox@sha256:1669a6aa7350e1cdd28f972ddad5aceba2912f589f19a090ac75b7083da748db
+
+# Test pulling manifest list explicitly specifying a platform
+test_puller_multiplatform gcr.io/google-containers/pause:3.1 linux/amd64 \
+  sha256:59eec8837a4d942cc19a52b8c09ea75121acc38114a2c68b98983ce9356b8610
+
+test_puller_multiplatform gcr.io/google-containers/pause:3.1 linux/ppc64le \
+  sha256:bcf9771c0b505e68c65440474179592ffdfa98790eb54ffbf129969c5e429990
 
 # TODO(user): Add an authenticated pull test.

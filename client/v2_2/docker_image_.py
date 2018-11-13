@@ -770,7 +770,8 @@ class FromDisk(DockerImage):
     if diff_id in self._uncompressed_layer_to_filename:
       with io.open(self._uncompressed_layer_to_filename[diff_id],
                    u'rb') as reader:
-        return reader.read()
+        # TODO(b/118349036): Remove the disable once the pytype bug is fixed.
+        return reader.read()  # pytype: disable=bad-return-type
     if self._legacy_base and diff_id in self._legacy_base.diff_ids():
       return self._legacy_base.uncompressed_layer(diff_id)
     return super(FromDisk, self).uncompressed_layer(diff_id)

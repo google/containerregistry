@@ -72,7 +72,7 @@ class Push(object):
         accepted_codes=[
             six.moves.http_client.OK, six.moves.http_client.CREATED
         ],
-        body='[]')
+        body='[]')  # pytype: disable=wrong-arg-types
 
     # The response should have an X-Docker-Token header, which
     # we should extract and annotate subsequent requests with:
