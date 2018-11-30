@@ -30,7 +30,6 @@ py_library(
     ],
 )
 
-load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository") 
 load("@subpar//:subpar.bzl", "par_binary")
 
 par_binary(
