@@ -33,8 +33,13 @@ $ bazel run @containerregistry//:puller.par -- --help
 ```
 
 ```
-usage: puller.par [-h] --name NAME --directory DIRECTORY [--platform PLATFORM]
-                  [--stderrthreshold STDERRTHRESHOLD]
+usage: puller.par [-h] --name NAME --directory DIRECTORY [--os OS]
+                   [--os-version OS_VERSION]
+                   [--os-features [OS_FEATURES [OS_FEATURES ...]]]
+                   [--architecture ARCHITECTURE] [--variant VARIANT]
+                   [--features [FEATURES [FEATURES ...]]]
+                   [--client-config-dir CLIENT_CONFIG_DIR]
+                   [--stderrthreshold STDERRTHRESHOLD]
 
 Pull images from a Docker Registry, faaaaast.
 
@@ -44,10 +49,29 @@ optional arguments:
                         Supports fully-qualified tag or digest references.
   --directory DIRECTORY
                         Where to save the image's files.
-  --platform PLATFORM   Which platform image to pull for multi-platform
-                        manifest lists. Formatted as os/arch.
+  --os OS               For multi-platform manifest lists, specifies the
+                        operating system.
+  --os-version OS_VERSION
+                        For multi-platform manifest lists, specifies the
+                        operating system version.
+  --os-features [OS_FEATURES [OS_FEATURES ...]]
+                        For multi-platform manifest lists, specifies operating
+                        system features.
+  --architecture ARCHITECTURE
+                        For multi-platform manifest lists, specifies the CPU
+                        architecture.
+  --variant VARIANT     For multi-platform manifest lists, specifies the CPU
+                        variant.
+  --features [FEATURES [FEATURES ...]]
+                        For multi-platform manifest lists, specifies CPU
+                        features.
+  --client-config-dir CLIENT_CONFIG_DIR
+                        The path to the directory where the client
+                        configuration files are located. Overiddes the value
+                        from DOCKER_CONFIG
   --stderrthreshold STDERRTHRESHOLD
                         Write log events at or above this level to stderr.
+
 ```
 
 ## pusher.par
@@ -58,9 +82,10 @@ $ bazel run @containerregistry//:pusher.par -- --help
 
 ```
 usage: pusher.par [-h] --name NAME [--tarball TARBALL] [--config CONFIG]
-                  [--manifest MANIFEST] [--digest DIGEST] [--layer LAYER]
-                  [--stamp-info-file STAMP_INFO_FILE] [--oci]
-                  [--stderrthreshold STDERRTHRESHOLD]
+                   [--manifest MANIFEST] [--digest DIGEST] [--layer LAYER]
+                   [--stamp-info-file STAMP_INFO_FILE] [--oci]
+                   [--client-config-dir CLIENT_CONFIG_DIR]
+                   [--stderrthreshold STDERRTHRESHOLD]
 
 Push images to a Docker Registry, faaaaaast.
 
@@ -76,8 +101,13 @@ optional arguments:
                         A list of files from which to read substitutions to
                         make in the provided --name, e.g. {BUILD_USER}
   --oci                 Push the image with an OCI Manifest.
+  --client-config-dir CLIENT_CONFIG_DIR
+                        The path to the directory where the client
+                        configuration files are located. Overiddes the value
+                        from DOCKER_CONFIG
   --stderrthreshold STDERRTHRESHOLD
                         Write log events at or above this level to stderr.
+
 ```
 
 ## importer.par

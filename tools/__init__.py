@@ -20,6 +20,10 @@ from containerregistry.tools import patched_
 setattr(x, 'patched', patched_)
 
 
+from containerregistry.tools import platform_args_
+setattr(x, 'platform_args', platform_args_)
+
+
 from containerregistry.tools import logging_setup_
 setattr(x, 'logging_setup', logging_setup_)
 
