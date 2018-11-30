@@ -85,7 +85,7 @@ py_library(
     )
 
     # For packaging python tools.
-    native.git_repository(
+    git_repository(
         name = "subpar",
         remote = "https://github.com/google/subpar",
         commit = "07ff5feb7c7b113eea593eb6ec50b51099cf0261",
