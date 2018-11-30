@@ -29,14 +29,15 @@ function test_puller() {
 
 test_puller_multiplatform() {
   local image=$1
-  local platform=$2
-  local expected_digest=$3
+  local expected_digest=$2
+  shift 2
+  local platform_args=$@
 
   local tmpdir=$(mktemp -d)
 
-  echo "TESTING: ${image} platform ${platform}"
+  echo "TESTING: ${image} ${platform_args}"
 
-  puller.par --name="${image}" --directory="${tmpdir}" --platform="${platform}"
+  puller.par --name="${image}" --directory="${tmpdir}" ${platform_args}
 
   digest=$(cat "${tmpdir}/digest")
   rm -rf "${tmpdir}"
@@ -109,10 +110,18 @@ test_image gcr.io/google-containers/pause@sha256:9ce5316f9752b8347484ab0f6778573
 test_image index.docker.io/library/busybox@sha256:1669a6aa7350e1cdd28f972ddad5aceba2912f589f19a090ac75b7083da748db
 
 # Test pulling manifest list explicitly specifying a platform
-test_puller_multiplatform gcr.io/google-containers/pause:3.1 linux/amd64 \
-  sha256:59eec8837a4d942cc19a52b8c09ea75121acc38114a2c68b98983ce9356b8610
+test_puller_multiplatform gcr.io/google-containers/pause:3.1 \
+  sha256:59eec8837a4d942cc19a52b8c09ea75121acc38114a2c68b98983ce9356b8610 \
+  --os linux --architecture amd64
 
-test_puller_multiplatform gcr.io/google-containers/pause:3.1 linux/ppc64le \
-  sha256:bcf9771c0b505e68c65440474179592ffdfa98790eb54ffbf129969c5e429990
+test_puller_multiplatform gcr.io/google-containers/pause:3.1 \
+  sha256:bcf9771c0b505e68c65440474179592ffdfa98790eb54ffbf129969c5e429990 \
+  --os linux --architecture ppc64le
+
+test_puller_multiplatform index.docker.io/library/busybox:1.29.3 \
+  sha256:11a6b4baf996d8e52a332fbe7117aca1aae2b3068c7106f5b1065c16e8660895 \
+  --os linux --architecture arm --variant v5
+
+# TODO: add multiplatform test cases on --os-features and --features
 
 # TODO(user): Add an authenticated pull test.

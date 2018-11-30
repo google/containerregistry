@@ -12,8 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository")
+load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
+
 def repositories():
-    native.new_http_archive(
+    """Load bazel dependencies."""
+
+    http_archive(
         name = "httplib2",
         url = "https://codeload.github.com/httplib2/httplib2/tar.gz/v0.11.3",
         sha256 = "d9f568c183d1230f271e9c60bd99f3f2b67637c3478c9068fea29f7cca3d911f",
@@ -29,7 +34,7 @@ py_library(
     )
 
     # Used by oauth2client
-    native.new_http_archive(
+    http_archive(
         name = "six",
         url = "https://pypi.python.org/packages/source/s/six/six-1.9.0.tar.gz",
         sha256 = "e24052411fc4fbd1f672635537c3fc2330d9481b18c0317695b46259512c91d5",
@@ -51,7 +56,7 @@ py_library(
     )
 
     # Used for authentication in containerregistry
-    native.new_http_archive(
+    http_archive(
         name = "oauth2client",
         url = "https://codeload.github.com/google/oauth2client/tar.gz/v4.0.0",
         sha256 = "7230f52f7f1d4566a3f9c3aeb5ffe2ed80302843ce5605853bee1f08098ede46",
@@ -70,7 +75,7 @@ py_library(
     )
 
     # Used for parallel execution in containerregistry
-    native.new_http_archive(
+    http_archive(
         name = "concurrent",
         url = "https://codeload.github.com/agronholm/pythonfutures/tar.gz/3.0.5",
         sha256 = "a7086ddf3c36203da7816f7e903ce43d042831f41a9705bc6b4206c574fcb765",
@@ -85,7 +90,7 @@ py_library(
     )
 
     # For packaging python tools.
-    native.git_repository(
+    git_repository(
         name = "subpar",
         remote = "https://github.com/google/subpar",
         commit = "07ff5feb7c7b113eea593eb6ec50b51099cf0261",

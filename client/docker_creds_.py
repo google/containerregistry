@@ -231,11 +231,30 @@ def _GetConfigDirectory():
 class _DefaultKeychain(Keychain):
   """This implements the default docker credential resolution."""
 
+  def __init__(self):
+    # Store a custom directory to get the Docker configuration JSON from
+    self._config_dir = None
+    # Name of the docker configuration JSON file to look for in the
+    # configuration directory
+    self._config_file = 'config.json'
+
+  def setCustomConfigDir(self, config_dir):
+    # Override the configuration directory where the docker configuration
+    # JSON is searched for
+    if not os.path.isdir(config_dir):
+      raise Exception('Attempting to override docker configuration directory'
+                      ' to invalid directory: {}'.format(config_dir))
+    self._config_dir = config_dir
+
   def Resolve(self, name):
     # TODO(user): Consider supporting .dockercfg, which was used prior
     # to Docker 1.7 and consisted of just the contents of 'auths' below.
     logging.info('Loading Docker credentials for repository %r', str(name))
-    config_file = os.path.join(_GetConfigDirectory(), 'config.json')
+    config_file = None
+    if self._config_dir is not None:
+      config_file = os.path.join(self._config_dir, self._config_file)
+    else:
+      config_file = os.path.join(_GetConfigDirectory(), self._config_file)
     try:
       with io.open(config_file, u'r', encoding='utf8') as reader:
         cfg = json.loads(reader.read())
