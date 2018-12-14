@@ -18,6 +18,7 @@ from __future__ import division
 
 from __future__ import print_function
 
+import errno
 import io
 import json
 import os
@@ -140,8 +141,10 @@ def tarball(name, image,
   multi_image_tarball({name: image}, tar, {})
 
 
-def fast(image, directory,
-         threads = 1):
+def fast(image,
+         directory,
+         threads = 1,
+         cache_directory = None):
   """Produce a FromDisk compatible file layout under the provided directory.
 
   After calling this, the following filesystem will exist:
@@ -162,6 +165,7 @@ def fast(image, directory,
     image: a docker image to save.
     directory: an existing empty directory under which to save the layout.
     threads: the number of threads to use when performing the upload.
+    cache_directory: directory that stores file cache.
 
   Returns:
     A tuple whose first element is the path to the config file, and whose second
@@ -173,6 +177,38 @@ def fast(image, directory,
                  arg):
     with io.open(name, u'wb') as f:
       f.write(accessor(arg))
+
+  def write_file_and_store(name, accessor,
+                           arg, cached_layer):
+    write_file(cached_layer, accessor, arg)
+    link(cached_layer, name)
+
+  def link(source, dest):
+    """Creates a symbolic link dest pointing to source.
+
+    Unlinks first to remove "old" layers if needed
+    e.g., image A latest has layers 1, 2 and 3
+    after a while it has layers 1, 2 and 3'.
+    Since in both cases the layers are named 001, 002 and 003,
+    unlinking promises the correct layers are linked in the image directory.
+
+    Args:
+      source: image directory source.
+      dest: image directory destination.
+    """
+    try:
+      os.symlink(source, dest)
+    except OSError as e:
+      if e.errno == errno.EEXIST:
+        os.unlink(dest)
+        os.symlink(source, dest)
+      else:
+        raise e
+
+  def valid(cached_layer, digest):
+    with io.open(cached_layer, u'rb') as f:
+      current_digest = docker_digest.SHA256(f.read(), '')
+    return current_digest == digest
 
   with concurrent.futures.ThreadPoolExecutor(max_workers=threads) as executor:
     future_to_params = {}
@@ -192,18 +228,30 @@ def fast(image, directory,
     layers = []
     for blob in reversed(image.fs_layers()):
       # Create a local copy
+      layer_name = os.path.join(directory, '%03d.tar.gz' % idx)
       digest_name = os.path.join(directory, '%03d.sha256' % idx)
+      # Strip the sha256: prefix
+      digest = blob[7:].encode('utf8')
       f = executor.submit(
           write_file,
           digest_name,
-          # Strip the sha256: prefix
           lambda blob: blob[7:].encode('utf8'),
           blob)
       future_to_params[f] = digest_name
 
-      layer_name = os.path.join(directory, '%03d.tar.gz' % idx)
-      f = executor.submit(write_file, layer_name, image.blob, blob)
-      future_to_params[f] = layer_name
+      if cache_directory:
+        # Search for a local cached copy
+        cached_layer = os.path.join(cache_directory, digest)
+        if os.path.exists(cached_layer) and valid(cached_layer, digest):
+          f = executor.submit(link, cached_layer, layer_name)
+          future_to_params[f] = layer_name
+        else:
+          f = executor.submit(write_file_and_store, layer_name, image.blob,
+                              blob, cached_layer)
+          future_to_params[f] = layer_name
+      else:
+        f = executor.submit(write_file, layer_name, image.blob, blob)
+        future_to_params[f] = layer_name
 
       layers.append((digest_name, layer_name))
       idx += 1

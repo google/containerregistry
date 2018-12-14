@@ -160,7 +160,7 @@ def Override(data,
 
   output['config'] = defaults.get('config', {})
 
-  # pytype: disable=attribute-error
+  # pytype: disable=attribute-error,unsupported-operands
   if options.entrypoint:
     output['config']['Entrypoint'] = options.entrypoint
   if options.cmd:
@@ -204,7 +204,7 @@ def Override(data,
 
   if options.workdir:
     output['config']['WorkingDir'] = options.workdir
-  # pytype: enable=attribute-error
+  # pytype: enable=attribute-error,unsupported-operands
 
   # diff_ids are ordered from bottom-most to top-most
   diff_ids = defaults.get('rootfs', {}).get('diff_ids', [])

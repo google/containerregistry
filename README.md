@@ -71,7 +71,6 @@ optional arguments:
                         from DOCKER_CONFIG
   --stderrthreshold STDERRTHRESHOLD
                         Write log events at or above this level to stderr.
-
 ```
 
 ## pusher.par
@@ -107,7 +106,6 @@ optional arguments:
                         from DOCKER_CONFIG
   --stderrthreshold STDERRTHRESHOLD
                         Write log events at or above this level to stderr.
-
 ```
 
 ## importer.par
