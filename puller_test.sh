@@ -19,6 +19,8 @@
 # Trick to chase the symlink before the docker build.
 cp -f puller.par puller2.par
 
+timing=-1
+
 # Test pulling an image by just invoking the puller
 function test_puller() {
   local image=$1
@@ -81,6 +83,53 @@ function test_image() {
   test_base "${image}" python2.7 gcr.io/cloud-builders/bazel
 }
 
+function test_puller_with_cache() {
+  local image=$1
+
+   # Test it in our current environment.
+  puller.par --name="${image}" --directory=/tmp/ --cache=/tmp/containerregistry_docker_cache_dir
+}
+ function test_image_with_cache() {
+  local image=$1
+
+  test_image_with_timing "${image}"
+  local first_pull_timing=$timing
+  echo "TIMING: ${image} - First pull took ${first_pull_timing} seconds"
+
+  test_image_with_timing "${image}"
+  local second_pull_timing=$timing
+  echo "TIMING: ${image} - Second pull took ${second_pull_timing} seconds"
+   # TODO - is there a better way to test that the cache was used beside asserting the first_pull > second_pull???
+}
+
+ function test_image_with_timing() {
+  local image=$1
+
+  echo "TESTING: ${image}"
+  local pull_start=$(date +%s)
+  test_puller_with_cache "${image}"
+  local pull_end=$(date +%s)
+  timing=$(($pull_end-$pull_start))
+
+  test_base "${image}" python2.7 python:2.7
+  test_base "${image}" python2.7 gcr.io/cloud-builders/bazel
+}
+
+ function clear_cache_directory() {
+  rm -fr /tmp/containerregistry_docker_cache_dir
+}
+
+ function create_cache_directory() {
+  mkdir -p /tmp/containerregistry_docker_cache_dir
+}
+
+clear_cache_directory
+
+create_cache_directory
+
+ # Test pulling with cache
+test_image_with_cache gcr.io/google-appengine/python:latest
+
 # Test pulling a trivial image.
 test_image gcr.io/google-containers/pause:2.0
 
@@ -125,3 +174,6 @@ test_puller_multiplatform index.docker.io/library/busybox:1.29.3 \
 # TODO: add multiplatform test cases on --os-features and --features
 
 # TODO(user): Add an authenticated pull test.
+
+clear_cache_directory
+
