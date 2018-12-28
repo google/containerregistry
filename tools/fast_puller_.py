@@ -58,7 +58,7 @@ platform_args.AddArguments(parser)
 parser.add_argument(
     '--client-config-dir',
     action='store',
-    help='The path to the directory where the client configuration files are '
+    help='The path to the directory w here the client configuration files are '
     'located. Overiddes the value from DOCKER_CONFIG')
 parser.add_argument(
     '--cache', action='store', help='Image\'s files cache directory.')

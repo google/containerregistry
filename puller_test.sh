@@ -29,7 +29,7 @@ function test_puller() {
   puller.par --name="${image}" --directory=/tmp/
 }
 
-test_puller_multiplatform() {
+function test_puller_multiplatform() {
   local image=$1
   local expected_digest=$2
   shift 2
@@ -168,7 +168,7 @@ test_puller_multiplatform gcr.io/google-containers/pause:3.1 \
   --os linux --architecture ppc64le
 
 test_puller_multiplatform index.docker.io/library/busybox:1.29.3 \
-  sha256:11a6b4baf996d8e52a332fbe7117aca1aae2b3068c7106f5b1065c16e8660895 \
+  sha256:d9ba6331ecef10de2a6d3eb403c815d86838a2ffb8368f7d75bb8faafc5aaa3e \
   --os linux --architecture arm --variant v5
 
 # TODO: add multiplatform test cases on --os-features and --features
