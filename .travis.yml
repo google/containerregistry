@@ -37,6 +37,7 @@ addons:
 
 script:
   - sudo touch /etc/profile.d/httplib2.sh
+  - sudo chmod 777 /etc/profile.d/httplib2.sh
   - echo 'export HTTPLIB2_CA_CERTS=/etc/ssl/certs/ca-certificates.crt' > /etc/profile.d/httplib2.sh
   - bazel clean && bazel build //...
   # Run outside of the sandbox to get access to Docker credentials registered above.
