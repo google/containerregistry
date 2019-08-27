@@ -94,7 +94,7 @@ def main():
       layers=layers,
       uncompressed_layers=uncompressed_layers,
       legacy_base=args.tarball) as v2_2_img:
-    with tarfile.open(args.filesystem, 'w:') as tar:
+    with tarfile.open(args.filesystem, 'w:', encoding='utf-8') as tar:
       v2_2_image.extract(v2_2_img, tar)
 
     with open(args.metadata, 'w') as f:
