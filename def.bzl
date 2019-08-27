@@ -93,5 +93,5 @@ py_library(
     git_repository(
         name = "subpar",
         remote = "https://github.com/google/subpar",
-        commit = "b80297a1b8d38027a86836dbadc22f55dc3ecad56728175381aa6330705ac10f",  # 2019-08-27
+        commit = "35bb9f0092f71ea56b742a520602da9b3638a24f",  # 2019-08-27
     )
