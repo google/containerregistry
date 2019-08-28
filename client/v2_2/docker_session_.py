@@ -19,7 +19,6 @@ from __future__ import division
 from __future__ import print_function
 
 import logging
-import concurrent.futures
 
 from containerregistry.client import docker_creds
 from containerregistry.client import docker_name
@@ -311,7 +310,7 @@ class Push(object):
       for digest in image.distributable_blob_set():
         self._upload_one(image, digest)
     else:
-      with concurrent.futures.ThreadPoolExecutor(
+      with futures.ThreadPoolExecutor(
           max_workers=self._threads) as executor:
         future_to_params = {
             executor.submit(self._upload_one, image, digest): (image, digest)
