@@ -361,7 +361,7 @@ class Transport(object):
 
     # If the first request fails on a 401 Unauthorized, then refresh the
     # Bearer token and retry, if the authentication mode is bearer.
-    for retry in [self._authentication == _BEARER, False]:
+    for retry_unauthorized in [self._authentication == _BEARER, False]:
       # self._creds may be changed by self._Refresh(), so do
       # not hoist this.
       headers = {
@@ -385,11 +385,12 @@ class Transport(object):
       resp, content = self._transport.request(
           url, method, body=body, headers=headers)
 
-      if resp.status != six.moves.http_client.UNAUTHORIZED:
-        break
-      elif retry:
+      if (retry_unauthorized and
+          resp.status == six.moves.http_client.UNAUTHORIZED):
         # On Unauthorized, refresh the credential and retry.
         self._Refresh()
+        continue
+      break
 
     if resp.status not in accepted_codes:
       # Use the content returned by GCR as the error message.
