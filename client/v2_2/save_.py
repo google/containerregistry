@@ -219,7 +219,7 @@ def fast(image,
     future_to_params[f] = config_file
 
     executor.submit(write_file, os.path.join(directory, 'digest'),
-                    lambda unused: image.digest(), 'unused')
+                    lambda unused: image.digest().encode('utf8'), 'unused')
     executor.submit(write_file, os.path.join(directory, 'manifest.json'),
                     lambda unused: image.manifest().encode('utf8'),
                     'unused')
@@ -308,7 +308,7 @@ def uncompressed(image,
     future_to_params[f] = config_file
 
     executor.submit(write_file, os.path.join(directory, 'digest'),
-                    lambda unused: image.digest(), 'unused')
+                    lambda unused: image.digest().encode('utf8'), 'unused')
     executor.submit(write_file, os.path.join(directory, 'manifest.json'),
                     lambda unused: image.manifest().encode('utf8'),
                     'unused')

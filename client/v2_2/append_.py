@@ -65,7 +65,7 @@ class Layer(docker_image.DockerImage):
       self._blob_sum = docker_digest.SHA256(self._blob)
       manifest['layers'].append({
           'digest': self._blob_sum,
-          'mediaType': docker_http.MANIFEST_SCHEMA2_MIME,
+          'mediaType': docker_http.LAYER_MIME,
           'size': len(self._blob),
       })
       if not diff_id:

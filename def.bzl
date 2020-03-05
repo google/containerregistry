@@ -20,9 +20,9 @@ def repositories():
 
     http_archive(
         name = "httplib2",
-        url = "https://codeload.github.com/httplib2/httplib2/tar.gz/v0.11.3",
-        sha256 = "d9f568c183d1230f271e9c60bd99f3f2b67637c3478c9068fea29f7cca3d911f",
-        strip_prefix = "httplib2-0.11.3/python2/httplib2/",
+        url = "https://codeload.github.com/httplib2/httplib2/tar.gz/v0.17.0",
+        sha256 = "556aa045aefeed3fd58a003251c94627e077ab0732758e5178a0074d9c75a68b",
+        strip_prefix = "httplib2-0.17.0/python3/httplib2/",
         type = "tar.gz",
         build_file_content = """
 py_library(
@@ -74,24 +74,17 @@ py_library(
 )""",
     )
 
-    # Used for parallel execution in containerregistry
+    # For subpar.
     http_archive(
-        name = "concurrent",
-        url = "https://codeload.github.com/agronholm/pythonfutures/tar.gz/3.0.5",
-        sha256 = "a7086ddf3c36203da7816f7e903ce43d042831f41a9705bc6b4206c574fcb765",
-        strip_prefix = "pythonfutures-3.0.5/concurrent/",
-        type = "tar.gz",
-        build_file_content = """
-py_library(
-   name = "concurrent",
-   srcs = glob(["**/*.py"]),
-   visibility = ["//visibility:public"]
-)""",
+        name = "rules_python",
+        url = "https://github.com/bazelbuild/rules_python/releases/download/0.0.1/rules_python-0.0.1.tar.gz",
+        sha256 = "aa96a691d3a8177f3215b14b0edc9641787abaaa30363a080165d06ab65e1161",
     )
 
     # For packaging python tools.
     git_repository(
         name = "subpar",
         remote = "https://github.com/google/subpar",
-        commit = "0356bef3fbbabec5f0e196ecfacdeb6db62d48c0",  # 2019-03-07
+        commit = "9fae6b63cfeace2e0fb93c9c1ebdc28d3991b16f",  # 2019-08-14
+        shallow_since = "1565833028 -0400",
     )
