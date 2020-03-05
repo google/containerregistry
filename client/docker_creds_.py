@@ -175,7 +175,7 @@ class Helper(Basic):
       raise Exception('Error fetching credential for %s, exit status: %d\n%s' %
                       (self._name, p.returncode, stdout))
 
-    blob = json.loads(stdout)
+    blob = json.loads(stdout.decode('utf-8'))
     logging.info('Successfully obtained Docker credentials.')
     return Basic(blob['Username'], blob['Secret']).Get()
 

@@ -153,7 +153,6 @@ test_image quay.io/coreos/etcd:latest
 # TODO: Error pulling and saving image registry.gitlab.com/mattmoor/test-project/image:latest: [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: unable to get local issuer certificate (_ssl.c:1108)
 # test_base registry.gitlab.com/mattmoor/test-project/image:latest python3 python:3
 
-
 # Test pulling by digest
 test_image gcr.io/google-containers/pause@sha256:9ce5316f9752b8347484ab0f6778573af15524124d52b93230b9a0dcc987e73e
 

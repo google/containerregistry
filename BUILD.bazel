@@ -23,9 +23,9 @@ py_library(
         "transport/**/*.py",
     ]),
     deps = [
-        "@httplib2//:httplib2",
-        "@oauth2client//:oauth2client",
-        "@six//:six",
+        "@httplib2",
+        "@oauth2client",
+        "@six",
     ],
 )
 
@@ -84,8 +84,8 @@ sh_test(
     size = "large",
     srcs = ["appender_test.sh"],
     data = [
-        ":testenv.sh",
         ":appender.par",
+        ":testenv.sh",
     ],
 )
 
@@ -94,8 +94,8 @@ sh_test(
     size = "large",
     srcs = ["puller_test.sh"],
     data = [
-        ":testenv.sh",
         ":puller.par",
+        ":testenv.sh",
     ],
 )
 
@@ -104,8 +104,8 @@ sh_test(
     size = "large",
     srcs = ["pusher_test.sh"],
     data = [
-        ":testenv.sh",
         ":pusher.par",
+        ":testenv.sh",
     ],
 )
 
@@ -114,8 +114,8 @@ sh_test(
     size = "large",
     srcs = ["digester_test.sh"],
     data = [
-        ":testenv.sh",
         ":digester.par",
         ":pusher.par",
+        ":testenv.sh",
     ],
 )
